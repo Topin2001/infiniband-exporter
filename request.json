@@ -1,9 +1,18 @@
 {
-    "filters": {
+    "cable_info_filters": {
         "NodeGuid": "label",
         "PortNum": "label",
         "Temperature": "label",
         "LengthCopperOrActive":"value"
+    },
+    "pm_info_filters" : {
+        "NodeGUID" : "label",
+        "PortNumber": "label",
+        "PortXmitWait": "value"
+    },
+    "temp_sensing_filters" : {
+        "NodeGUID": "label",
+        "CurrentTemperature": "value"
     }
 }
   

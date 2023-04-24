@@ -11,10 +11,12 @@ from wsgiref.simple_server import make_server, WSGIRequestHandler
 
 def csv_global_parser(csv_file_input):
     cable_info = []
+    temp_sensing = []
     try:
         with open(csv_file_input, mode='r') as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
             isCableInfoData = False
+            isTempSensingData = False
             for row in reader:
                 if 'END_CABLE_INFO' in row:
                     logging.debug('Now out of cable info table')
@@ -24,10 +26,18 @@ def csv_global_parser(csv_file_input):
                 if 'START_CABLE_INFO' in row:
                     logging.debug('Now in cable info table')
                     isCableInfoData = True
+                if 'END_TEMP_SENSING' in row:
+                    logging.debug('Now out of temp sensing table')
+                    isTempSensingData = False
+                if isTempSensingData:
+                    temp_sensing.append(','.join(row))
+                if 'START_TEMP_SENSING' in row:
+                    logging.debug('Now in temp sensing table')
+                    isTempSensingData = True
     except Exception as e:
         logging.error(f"Error while reading the CSV file: {e}")
         raise ParsingError("Error while parsing the CSV file")
-    return cable_info
+    return cable_info, temp_sensing
 
 def cable_info_filter(cable_info):
     try:
@@ -35,7 +45,7 @@ def cable_info_filter(cable_info):
             filtered_row = []
             label = []
             value = []
-            filters = json.load(f)["filters"]
+            filters = json.load(f)["cable_info_filters"]
             reader = csv.DictReader(cable_info, delimiter=',')
             for key, type in filters.items():
                 if type == 'value':
@@ -45,12 +55,39 @@ def cable_info_filter(cable_info):
             for row in reader:
                 filter_row = {}
                 for key, type in filters.items():
-                    filter_row[key] = row[key]
+                    filter_row[key.lower()] = row[key].lower()
                 filtered_row.append(filter_row)
     except Exception as e:
         logging.error(f"Error while filtering the cable info: {e}")
         raise ParsingError("Error while filtering the cable info")
     return filtered_row, value, label
+
+def temp_sensing_filter(temp_sensing):
+    try:
+        with open('request.json') as f:
+            filtered_row = []
+            label = []
+            value = []
+            filters = json.load(f)["temp_sensing_filters"]
+            reader = csv.DictReader(temp_sensing, delimiter=',')
+            for key, type in filters.items():
+                if type == 'value':
+                    value.append(key)
+                else:
+                    label.append(key)
+            for row in reader:
+                filter_row = {}
+                for key, type in filters.items():
+                    filter_row[key.lower()] = row[key].lower()
+                filtered_row.append(filter_row)
+    except Exception as e:
+        logging.error(f"Error while filtering the temp sensing: {e}")
+        raise ParsingError("Error while filtering the temp sensing")
+    return filtered_row, value, label
+
+def join_csv(dict1, dict2):
+    dict1.update(dict2)
+    print(dict1)
 
 class ParsingError(Exception):
     pass
@@ -84,7 +121,6 @@ class InfinibandCollector(object):
     def data_link(self):
 
         for cable_info in cable_info_filtered :
-            print(cable_info)
             name = ""
             if self.node_name_map :
                 with open(self.node_name_map, 'r') as file:
@@ -196,11 +232,14 @@ var NODE_NAME_MAP')
 
 
         
-    cable_info_raw = csv_global_parser(csv_file_input)
-    cable_info_filtered, values, labels = cable_info_filter(cable_info_raw)
-    labels.append('NodeName')
+    cable_info_raw, temp_sensing_raw = csv_global_parser(csv_file_input)
+
+    cable_info_filtered, cable_info_values, cable_info_labels = cable_info_filter(cable_info_raw)
+    temp_sensing_filtered, temp_sensing_values, temp_sensing_labels = temp_sensing_filter(temp_sensing_raw)
+    print(cable_info_filtered, temp_sensing_filtered)
+    '''cable_info_labels.append('NodeName')
     app = make_wsgi_app(InfinibandCollector(
-        labels=labels, values=values, cable_info_filtered=cable_info_filtered, node_name_map=node_name_map))
+        labels=cable_info_labels, values=cable_info_values, cable_info_filtered=cable_info_filtered, node_name_map=node_name_map))
     httpd = make_server('', args.port, app,
                         handler_class=NoLoggingWSGIRequestHandler)
-    httpd.serve_forever()
+    httpd.serve_forever()'''
