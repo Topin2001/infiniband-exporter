@@ -9,146 +9,174 @@ from prometheus_client import make_wsgi_app
 from wsgiref.simple_server import make_server, WSGIRequestHandler
 
 
-def csv_global_parser(csv_file_input):
-    cable_info = []
-    pm_info = []
-    temp_sensing = []
-    try:
-        with open(csv_file_input, mode='r') as csvfile:
-            reader = csv.reader(csvfile, delimiter=',')
-            isCableInfoData = False
-            isTempSensingData = False
-            isPmInfoData = False
-            for row in reader:
-                if 'END_CABLE_INFO' in row:
-                    logging.debug('Now out of cable info table')
-                    isCableInfoData = False
-                if isCableInfoData:
-                    cable_info.append(','.join(row))
-                if 'START_CABLE_INFO' in row:
-                    logging.debug('Now in cable info table')
-                    isCableInfoData = True
-                if 'END_TEMP_SENSING' in row:
-                    logging.debug('Now out of temp sensing table')
-                    isTempSensingData = False
-                if isTempSensingData:
-                    temp_sensing.append(','.join(row))
-                if 'START_TEMP_SENSING' in row:
-                    logging.debug('Now in temp sensing table')
-                    isTempSensingData = True
-                if 'END_PM_INFO' in row:
-                    logging.debug('Now out of pm info table')
-                    isPmInfoData = False
-                if isPmInfoData:
-                    pm_info.append(','.join(row))
-                if 'START_PM_INFO' in row:
-                    logging.debug('Now in pm info table')
-                    isPmInfoData = True
-    except Exception as e:
-        logging.error(f"Error while reading the CSV file: {e}")
-        raise ParsingError("Error while parsing the CSV file")
-    return cable_info, pm_info, temp_sensing
-
-
-def cable_info_filter(cable_info):
-    try:
-        with open('request.json') as f:
-            filtered_row = []
-            label = []
-            value = []
-            filters = json.load(f)["cable_info_filters"]
-            reader = csv.DictReader(cable_info, delimiter=',')
-            for key, type in filters.items():
-                if type == 'value':
-                    value.append(key)
-                else:
-                    label.append(key)
-            for row in reader:
-                filter_row = {}
-                for key, type in filters.items():
-                    filter_row[key.lower()] = row[key].lower()
-                filtered_row.append(filter_row)
-    except Exception as e:
-        logging.error(f"Error while filtering the cable info: {e}")
-        raise ParsingError("Error while filtering the cable info")
-    return filtered_row, value, label
-
-def pm_info_filter(pm_info):
-    try:
-        with open('request.json') as f:
-            filtered_row = []
-            label = []
-            value = []
-            filters = json.load(f)["pm_info_filters"]
-            reader = csv.DictReader(pm_info, delimiter=',')
-            for key, type in filters.items():
-                if type == 'value':
-                    value.append(key)
-                else:
-                    label.append(key)
-            for row in reader:
-                filter_row = {}
-                for key, type in filters.items():
-                    filter_row[key.lower()] = row[key].lower()
-                filtered_row.append(filter_row)
-    except Exception as e:
-        logging.error(f"Error while filtering the cable info: {e}")
-        raise ParsingError("Error while filtering the cable info")
-    return filtered_row, value, label
-
-def temp_sensing_filter(temp_sensing):
-    try:
-        with open('request.json') as f:
-            filtered_row = []
-            filters = json.load(f)["temp_sensing_filters"]
-            reader = csv.DictReader(temp_sensing, delimiter=',')
-            for row in reader:
-                filter_row = {}
-                for key, type in filters.items():
-                    filter_row[key.lower()] = row[key].lower()
-                filtered_row.append(filter_row)
-    except Exception as e:
-        logging.error(f"Error while filtering the temp sensing: {e}")
-        raise ParsingError("Error while filtering the temp sensing")
-    return filtered_row
-
-
-def double_rm(myList):
-    result = []
-    marker = set()
-
-    for l in myList:
-        ll = l.lower()
-        if ll not in marker:   # test presence
-            marker.add(ll)
-            result.append(l)   # preserve order
-    
-    return result
-
-def join_csv(ldict1, ldict2):
-    for dic1 in ldict1:
-        for dic2 in ldict2:
-            if dic1['nodeguid'] == dic2['nodeguid'] and dic1['portnum'] == dic2['portnumber']:
-                dic1.update(dic2)
-    return(ldict1)
-
 class ParsingError(Exception):
     pass
 
 class InfinibandCollector(object):
-    def __init__(self, labels, values, cable_info_filtered, node_name_map):
-        self.labels = labels
-        self.values = values
-        self.cable_info_filtered = cable_info_filtered
+
+    def csv_global_parser(self, csv_file_input):
+        cable_info = []
+        pm_info = []
+        temp_sensing = []
+        try:
+            with open(csv_file_input, mode='r') as csvfile:
+                reader = csv.reader(csvfile, delimiter=',')
+                isCableInfoData = False
+                isTempSensingData = False
+                isPmInfoData = False
+                for row in reader:
+                    if 'END_CABLE_INFO' in row:
+                        logging.debug('Now out of cable info table')
+                        isCableInfoData = False
+                    if isCableInfoData:
+                        cable_info.append(','.join(row))
+                    if 'START_CABLE_INFO' in row:
+                        logging.debug('Now in cable info table')
+                        isCableInfoData = True
+                    if 'END_TEMP_SENSING' in row:
+                        logging.debug('Now out of temp sensing table')
+                        isTempSensingData = False
+                    if isTempSensingData:
+                        temp_sensing.append(','.join(row))
+                    if 'START_TEMP_SENSING' in row:
+                        logging.debug('Now in temp sensing table')
+                        isTempSensingData = True
+                    if 'END_PM_INFO' in row:
+                        logging.debug('Now out of pm info table')
+                        isPmInfoData = False
+                    if isPmInfoData:
+                        pm_info.append(','.join(row))
+                    if 'START_PM_INFO' in row:
+                        logging.debug('Now in pm info table')
+                        isPmInfoData = True
+        except Exception as e:
+            logging.error(f"Error while reading the CSV file: {e}")
+            raise ParsingError("Error while parsing the CSV file")
+        return cable_info, pm_info, temp_sensing
+
+    def cable_info_filter(self, cable_info):
+        try:
+            with open('request.json') as f:
+                filtered_row = []
+                label = []
+                value = []
+                filters = json.load(f)["cable_info_filters"]
+                reader = csv.DictReader(cable_info, delimiter=',')
+                for key, type in filters.items():
+                    if type == 'value':
+                        value.append(key)
+                    else:
+                        label.append(key)
+                for row in reader:
+                    filter_row = {}
+                    for key, type in filters.items():
+                        filter_row[key.lower()] = row[key].lower()
+                    filtered_row.append(filter_row)
+        except Exception as e:
+            logging.error(f"Error while filtering the cable info: {e}")
+            raise ParsingError("Error while filtering the cable info")
+        return filtered_row, value, label
+
+    def pm_info_filter(self, pm_info):
+        try:
+            with open('request.json') as f:
+                filtered_row = []
+                label = []
+                value = []
+                filters = json.load(f)["pm_info_filters"]
+                reader = csv.DictReader(pm_info, delimiter=',')
+                for key, type in filters.items():
+                    if type == 'value':
+                        value.append(key)
+                    else:
+                        label.append(key)
+                for row in reader:
+                    filter_row = {}
+                    for key, type in filters.items():
+                        filter_row[key.lower()] = row[key].lower()
+                    filtered_row.append(filter_row)
+        except Exception as e:
+            logging.error(f"Error while filtering the cable info: {e}")
+            raise ParsingError("Error while filtering the cable info")
+        return filtered_row, value, label
+
+    def temp_sensing_filter(self, temp_sensing):
+        try:
+            with open('request.json') as f:
+                filtered_row = []
+                value = []
+                label = []
+                filters = json.load(f)["temp_sensing_filters"]
+                reader = csv.DictReader(temp_sensing, delimiter=',')
+                for key, type in filters.items():
+                    if type == 'value':
+                        value.append(key)
+                    else:
+                        label.append(key)
+                for row in reader:
+                    filter_row = {}
+                    for key, type in filters.items():
+                        filter_row[key.lower()] = row[key].lower()
+                    filtered_row.append(filter_row)
+        except Exception as e:
+            logging.error(f"Error while filtering the temp sensing: {e}")
+            raise ParsingError("Error while filtering the temp sensing")
+        return filtered_row, value, label
+
+    def double_rm(self, myList):
+        result = []
+        marker = set()
+
+        for l in myList:
+            ll = l.lower()
+            if ll not in marker:   # test presence
+                marker.add(ll)
+                result.append(l)   # preserve order
+
+        return result
+
+    def join_csv(self, ldict1, ldict2):
+        for dic1 in ldict1:
+            for dic2 in ldict2:
+                if dic1['nodeguid'] == dic2['nodeguid'] and dic1['portnum'] == dic2['portnumber']:
+                    dic1.update(dic2)
+        return(ldict1)
+
+    def get_csv_value(self):
+        self.cable_info_raw, self.pm_info_raw, self.temp_sensing_raw = self.csv_global_parser(csv_file_input)
+        self.cable_info_filtered, self.cable_info_values, self.cable_info_labels = self.cable_info_filter(self.cable_info_raw)
+        self.temp_sensing_filtered, self.temp_sensing_values, self.temp_sensing_labels = self.temp_sensing_filter(self.temp_sensing_raw)
+        self.pm_info_filtered, self.pm_info_values, self.pm_info_labels = self.pm_info_filter(self.pm_info_raw)
+
+        self.info_merged = self.join_csv(self.cable_info_filtered, self.pm_info_filtered)
+
+        self.merged_info_labels = self.double_rm(self.cable_info_labels + self.pm_info_labels)
+        self.merged_info_values = self.double_rm(self.cable_info_values + self.pm_info_values)
+
+        self.temp_sensing_labels.append('NodeName')
+        self.merged_info_labels.append('NodeName')
+        self.labels = self.merged_info_labels
+        self.values = self.merged_info_values
+
+
+    def __init__(self, node_name_map):
+
+        self.get_csv_value()
+
         self.node_name_map = node_name_map
 
         self.scrape_with_errors = False
         self.metrics = {}
+        self.device_temp = {}
         self.gauge = {}
 
-        for value in values :
+        self.device_temp['device_temperature'] = {
+            'help': 'Device current temperature'
+        }
+
+        for value in self.values :
             self.gauge[f'{value}'] = {
-                    'help': f'Device current {value}.'
+                    'help': f'Device/Cable current {value}.'
             }
 
 
@@ -160,10 +188,20 @@ class InfinibandCollector(object):
                 self.gauge[value]['help'],
                 labels = self.labels
             )
+        
+        for value in self.device_temp:
+            self.metrics[value] = GaugeMetricFamily(
+                'infiniband_' + value.lower(),
+                self.device_temp[value]['help'],
+                labels = [
+                'NodeGuid',
+                'NodeName'
+                ]
+            )
 
     def data_link(self):
 
-        for cable_info in cable_info_filtered :
+        for cable_info in self.info_merged :
             name = ""
             if self.node_name_map :
                 with open(self.node_name_map, 'r') as file:
@@ -185,6 +223,29 @@ class InfinibandCollector(object):
 
                 self.metrics[value].add_metric(label_values, self.value_values)
 
+    def temp_link(self):
+        for temp_info in self.temp_sensing_filtered :
+            name = ""
+            if self.node_name_map :
+                with open(self.node_name_map, 'r') as file:
+                    datas = file.readlines()
+                    for data in datas:
+                        if temp_info['nodeguid'] in data:
+                            name = data.split(" ")[1]
+            temp_info['nodename'] = name
+            self.label_values = []
+            self.value_values = 0
+            for label in self.temp_sensing_labels:
+                self.label_values.append(temp_info[label.lower()])
+            print
+            for value in self.device_temp:
+                label_values = self.label_values
+                try :
+                    self.value_values = int(temp_info['currenttemperature'])
+                except ValueError:
+                    logging.error(f'The value {value} is not an int.')
+
+                self.metrics[value].add_metric(label_values, self.value_values)
 
     def collect(self):
 
@@ -202,11 +263,18 @@ class InfinibandCollector(object):
             'otherwise 0 on any non critical errors detected '
             'e.g. ignored lines from ibqueryerrors STDERR or parsing errors.')
 
+        self.get_csv_value()
+        
         self.init_metrics()
 
         self.data_link()
         
+        self.temp_link()
+
         for value in self.gauge:
+            yield self.metrics[value]
+
+        for value in self.device_temp:
             yield self.metrics[value]
 
         scrape_duration.add_metric([], time.time() - scrape_start)
@@ -274,21 +342,7 @@ var NODE_NAME_MAP')
         node_name_map = None
 
 
-        
-    cable_info_raw, pm_info_raw, temp_sensing_raw = csv_global_parser(csv_file_input)
-
-    cable_info_filtered, cable_info_values, cable_info_labels = cable_info_filter(cable_info_raw)
-    temp_sensing_filtered = temp_sensing_filter(temp_sensing_raw)
-    pm_info_filtered, pm_info_values, pm_info_labels = pm_info_filter(pm_info_raw)
-
-    info_merged = join_csv(cable_info_filtered, pm_info_filtered)
-    
-    merged_info_labels = double_rm(cable_info_labels + pm_info_labels)
-    merged_info_values = double_rm(cable_info_values + pm_info_values)
-
-    merged_info_labels.append('NodeName')
-    app = make_wsgi_app(InfinibandCollector(
-        labels=merged_info_labels, values=merged_info_values, cable_info_filtered=info_merged, node_name_map=node_name_map))
+    app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map))
     httpd = make_server('', args.port, app,
                         handler_class=NoLoggingWSGIRequestHandler)
     httpd.serve_forever()

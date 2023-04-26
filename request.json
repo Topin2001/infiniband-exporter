@@ -8,7 +8,8 @@
     "pm_info_filters" : {
         "NodeGUID" : "label",
         "PortNumber": "label",
-        "PortXmitWait": "value"
+        "PortXmitWait": "label",
+        "PortXmitData": "value"
     },
     "temp_sensing_filters" : {
         "NodeGUID": "label",
