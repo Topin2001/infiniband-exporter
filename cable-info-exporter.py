@@ -2,6 +2,9 @@ import csv
 import logging
 import argparse
 import json
+import re
+import shlex
+import subprocess
 import time
 
 from prometheus_client.core import GaugeMetricFamily
@@ -15,6 +18,11 @@ class ParsingError(Exception):
 class InfinibandCollector(object):
 
     def csv_global_parser(self, csv_file_input):
+        if csv_file_input == "/var/tmp/ibdiagnet2/ibdiagnet2.db_csv":
+            cmd = f'ibdiagnet --get_phy_info --disable_output default --enable_output db_csv'
+            subprocess.run(shlex.split(cmd),
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
         cable_info = []
         pm_info = []
         temp_sensing = []
@@ -51,17 +59,16 @@ class InfinibandCollector(object):
                         isPmInfoData = True
         except Exception as e:
             logging.error(f"Error while reading the CSV file: {e}")
-            raise ParsingError("Error while parsing the CSV file")
         return cable_info, pm_info, temp_sensing
 
-    def cable_info_filter(self, cable_info):
+    def data_filter(self, filter, info):
         try:
             with open('request.json') as f:
                 filtered_row = []
                 label = []
                 value = []
-                filters = json.load(f)["cable_info_filters"]
-                reader = csv.DictReader(cable_info, delimiter=',')
+                filters = json.load(f)[filter]
+                reader = csv.DictReader(info, delimiter=',')
                 for key, type in filters.items():
                     if type == 'value':
                         value.append(key)
@@ -75,52 +82,6 @@ class InfinibandCollector(object):
         except Exception as e:
             logging.error(f"Error while filtering the cable info: {e}")
             raise ParsingError("Error while filtering the cable info")
-        return filtered_row, value, label
-
-    def pm_info_filter(self, pm_info):
-        try:
-            with open('request.json') as f:
-                filtered_row = []
-                label = []
-                value = []
-                filters = json.load(f)["pm_info_filters"]
-                reader = csv.DictReader(pm_info, delimiter=',')
-                for key, type in filters.items():
-                    if type == 'value':
-                        value.append(key)
-                    else:
-                        label.append(key)
-                for row in reader:
-                    filter_row = {}
-                    for key, type in filters.items():
-                        filter_row[key.lower()] = row[key].lower()
-                    filtered_row.append(filter_row)
-        except Exception as e:
-            logging.error(f"Error while filtering the cable info: {e}")
-            raise ParsingError("Error while filtering the cable info")
-        return filtered_row, value, label
-
-    def temp_sensing_filter(self, temp_sensing):
-        try:
-            with open('request.json') as f:
-                filtered_row = []
-                value = []
-                label = []
-                filters = json.load(f)["temp_sensing_filters"]
-                reader = csv.DictReader(temp_sensing, delimiter=',')
-                for key, type in filters.items():
-                    if type == 'value':
-                        value.append(key)
-                    else:
-                        label.append(key)
-                for row in reader:
-                    filter_row = {}
-                    for key, type in filters.items():
-                        filter_row[key.lower()] = row[key].lower()
-                    filtered_row.append(filter_row)
-        except Exception as e:
-            logging.error(f"Error while filtering the temp sensing: {e}")
-            raise ParsingError("Error while filtering the temp sensing")
         return filtered_row, value, label
 
     def double_rm(self, myList):
@@ -143,15 +104,29 @@ class InfinibandCollector(object):
         return(ldict1)
 
     def get_csv_value(self):
+
         self.cable_info_raw, self.pm_info_raw, self.temp_sensing_raw = self.csv_global_parser(csv_file_input)
-        self.cable_info_filtered, self.cable_info_values, self.cable_info_labels = self.cable_info_filter(self.cable_info_raw)
-        self.temp_sensing_filtered, self.temp_sensing_values, self.temp_sensing_labels = self.temp_sensing_filter(self.temp_sensing_raw)
-        self.pm_info_filtered, self.pm_info_values, self.pm_info_labels = self.pm_info_filter(self.pm_info_raw)
+        self.cable_info_filtered, self.cable_info_values, self.cable_info_labels = self.data_filter("cable_info_filters", self.cable_info_raw)
+        self.temp_sensing_filtered, self.temp_sensing_values, self.temp_sensing_labels = self.data_filter("temp_sensing_filters", self.temp_sensing_raw)
+        self.pm_info_filtered, self.pm_info_values, self.pm_info_labels = self.data_filter("pm_info_filters", self.pm_info_raw)
 
         self.info_merged = self.join_csv(self.cable_info_filtered, self.pm_info_filtered)
 
         self.merged_info_labels = self.double_rm(self.cable_info_labels + self.pm_info_labels)
         self.merged_info_values = self.double_rm(self.cable_info_values + self.pm_info_values)
+
+
+        if 'NodeGuid' not in self.merged_info_labels:
+            self.merged_info_labels.append('NodeGuid')
+        
+        if 'PortNumber' not in self.merged_info_labels:
+            self.merged_info_labels.append('PortNumber')
+
+        if 'PortNum' in self.merged_info_labels:
+            self.merged_info_labels.remove('PortNum')
+
+        if 'NodeGUID' in self.merged_info_labels:
+            self.merged_info_labels.remove('NodeGUID')
 
         self.temp_sensing_labels.append('NodeName')
         self.merged_info_labels.append('NodeName')
@@ -173,6 +148,14 @@ class InfinibandCollector(object):
         self.device_temp['device_temperature'] = {
             'help': 'Device current temperature'
         }
+
+        self.link_info = {
+            'Link_State': {
+                'help': 'Link current state.',
+            }
+        }
+
+        self.link_info_regex = r'^(?P<LGuid>0x\w+)\s+\"\s*(?P<LName>[\w\-_ ]+)\"\s+\d+\s+(?P<LPort>\d+)\[\s+\]\s+\=+\(\s+.+(?P<State>Active|Down)\/\s*(?P<P_State>\w+)(?:.+(?P<RGuid>0x\w+)\s+\d+\s+(?P<RPort>\d+)\[\s+\]\s*\"\s*(?P<RName>[\w\-_ ]+).*|(?:()().*))$'
 
         for value in self.values :
             self.gauge[f'{value}'] = {
@@ -199,6 +182,76 @@ class InfinibandCollector(object):
                 ]
             )
 
+        for link_name in self.link_info:
+            self.metrics[link_name] = GaugeMetricFamily(
+                'infiniband_' + link_name.lower(),
+                self.link_info[link_name]['help'],
+                labels=[
+                    'local_name',
+                    'local_guid',
+                    'local_port',
+                    'state',
+                    'physical_state',
+                    'remote_guid',
+                    'remote_port',
+                    'remote_name'
+                ]
+            )
+
+    def chunks(self, x, n):
+        for i in range(0, len(x), n):
+            yield x[i:i + n]
+
+    def parse_state(self, item):
+
+        try :
+            port = f"{int(item[2]):02}"
+        except ValueError:
+            logging.error(f"The port given is not an int : {item[2]}")
+            port = "Unknown"
+
+        try :
+            rport = f"{int(item[6]):02}"
+        except TypeError :
+            rport = "Unknown"
+        except ValueError:
+            logging.error(f"The port given is neither null or an int : {item[6]}")
+            rport = "Unknown"
+
+            
+        for link in self.link_info:
+            label_values = [
+                item[1], #local_guid
+                item[0], #local_name
+                port, #local_port
+                item[3], #state
+                item[4], #physical_state
+                item[5] or "Unknown", #remote_gu id 
+                rport, #remote_port
+                item[7] or "Unknown"] #remote_name
+
+            self.metrics[link].add_metric(label_values, 1 if (item[3] == 'Active' and item[4] == 'LinkUp') else 0)
+
+    def process_state(self, item):
+        """
+        The method processes ibquery ca and switch data.
+
+        Parameters:
+            * item (Generator[List[str]])
+
+        Throws:
+            ParsingError - Raised during parsing of input content due to inconsistencies.
+            RuntimeError - Raised on wrong data type for parameter passed.
+        """
+
+        if not isinstance(item, list):
+            raise RuntimeError('Wrong data type passed for item: {}'.format(type(item)))
+
+        if len(item) != 11:
+            raise ParsingError('Item data incomplete:\n{}'.format(item[0]))
+
+        self.parse_state(item)
+
     def data_link(self):
 
         for cable_info in self.info_merged :
@@ -208,7 +261,7 @@ class InfinibandCollector(object):
                     datas = file.readlines()
                     for data in datas:
                         if cable_info['nodeguid'] in data:
-                            name = data.split(" ")[1]
+                            name = data.split(" ")[1].rstrip("\n")
             cable_info['nodename'] = name
             self.label_values = []
             self.value_values = 0
@@ -217,9 +270,9 @@ class InfinibandCollector(object):
             for value in self.gauge:
                 label_values = self.label_values
                 try :
-                    self.value_values = int(cable_info[value.lower()])
+                    self.value_values = int(cable_info[value.lower()].rstrip('c'))
                 except ValueError:
-                    logging.error(f'The value {value} is not an int.')
+                    logging.debug(f'The value {value} is not an int.')
 
                 self.metrics[value].add_metric(label_values, self.value_values)
 
@@ -231,13 +284,12 @@ class InfinibandCollector(object):
                     datas = file.readlines()
                     for data in datas:
                         if temp_info['nodeguid'] in data:
-                            name = data.split(" ")[1]
+                            name = data.split(" ")[1].rstrip("\n")
             temp_info['nodename'] = name
             self.label_values = []
             self.value_values = 0
             for label in self.temp_sensing_labels:
                 self.label_values.append(temp_info[label.lower()])
-            print
             for value in self.device_temp:
                 label_values = self.label_values
                 try :
@@ -264,7 +316,7 @@ class InfinibandCollector(object):
             'e.g. ignored lines from ibqueryerrors STDERR or parsing errors.')
 
         self.get_csv_value()
-        
+
         self.init_metrics()
 
         self.data_link()
@@ -276,6 +328,61 @@ class InfinibandCollector(object):
 
         for value in self.device_temp:
             yield self.metrics[value]
+        
+        iblinkinfo_stdout = ""
+        iblinkinfo_args = [
+            'iblinkinfo',
+            '--verbose',
+            '--line']
+        if self.node_name_map:
+            iblinkinfo_args.append('--node-name-map')
+            iblinkinfo_args.append(self.node_name_map)
+        iblinkinfo_start = time.time()
+        process = subprocess.Popen(iblinkinfo_args,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        process_stdout, process_stderr = process.communicate()
+        iblinkinfo_stdout = process_stdout.decode("utf-8")
+        if process_stderr:
+            iblinkinfo_stderr = process_stderr.decode("utf-8")
+            
+            logging.debug("STDERR output retrieved from iblinkinfo:\n%s",
+                iblinkinfo_stderr)
+            stderr_metrics, error = self.build_stderr_metrics(
+                iblinkinfo_stderr)
+            for stderr_metric in stderr_metrics:
+                yield stderr_metric
+            if error:
+                self.scrape_with_errors = True
+
+        content = re.split(self.link_info_regex,
+                           iblinkinfo_stdout,
+                           flags=re.MULTILINE)
+        try:
+
+            if not content:
+                raise ParsingError('Input content is empty.')
+
+            if not isinstance(content, list):
+                raise RuntimeError('Input content should be a list.')
+
+            # Drop first line that is empty on successful regex split():
+            if content[0] == '':
+                del content[0]
+            else:
+                raise ParsingError('Inconsistent input content detected:\n{}'.format(content[0]))
+
+            input_data_chunks = self.chunks(content, 11)
+
+            for data_chunk in input_data_chunks:
+                self.process_state(data_chunk)
+
+            for link_name in self.link_info:
+                yield self.metrics[link_name]
+
+        except ParsingError as e:
+            logging.error(e)
+            self.scrape_with_errors = True
 
         scrape_duration.add_metric([], time.time() - scrape_start)
         yield scrape_duration
@@ -314,8 +421,7 @@ if __name__ == '__main__':
         '--node-name-map',
         action='store',
         dest='node_name_map',
-        help='Node name map used by ibqueryerrors. Can also be set with env \
-var NODE_NAME_MAP')
+        help='Node name map used by ibqueryerrors.')
 
 
     args = parser.parse_args()
