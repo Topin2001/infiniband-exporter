@@ -26,12 +26,14 @@ class InfinibandCollector(object):
         cable_info = []
         pm_info = []
         temp_sensing = []
+        link_info = []
         try:
             with open(csv_file_input, mode='r') as csvfile:
                 reader = csv.reader(csvfile, delimiter=',')
                 isCableInfoData = False
                 isTempSensingData = False
                 isPmInfoData = False
+                isLinkInfo = False
                 for row in reader:
                     if 'END_CABLE_INFO' in row:
                         logging.debug('Now out of cable info table')
@@ -57,9 +59,18 @@ class InfinibandCollector(object):
                     if 'START_PM_INFO' in row:
                         logging.debug('Now in pm info table')
                         isPmInfoData = True
+                    if 'END_LINKS' in row:
+                        logging.debug('Now out of link info table')
+                        isLinkInfo = False
+                    if isLinkInfo:
+                        link_info.append(','.join(row))
+                    if 'START_LINKS' in row:
+                        logging.debug('Now in link info table')
+                        isLinkInfo = True
+
         except Exception as e:
-            logging.error(f"Error while reading the CSV file: {e}")
-        return cable_info, pm_info, temp_sensing
+            logging.critical(f"Error while reading the CSV file: {e}")
+        return cable_info, pm_info, temp_sensing, link_info
 
     def data_filter(self, filter, info):
         try:
@@ -68,20 +79,38 @@ class InfinibandCollector(object):
                 label = []
                 value = []
                 filters = json.load(f)[filter]
+                if filter == "cable_info_filters" and 'NodeGuid' not in filters:
+                    filters['NodeGuid'] = 'label'
+                if filter == "cable_info_filters" and 'PortNum' not in filters:
+                    filters['PortNum'] = 'label'
+                if filter == "pm_info_filters" and 'NodeGUID' not in filters:
+                    filters['NodeGUID'] = 'label'
+                if filter == "pm_info_filters" and 'PortNumber' not in filters:
+                    filters['PortNumber'] = 'label'
                 reader = csv.DictReader(info, delimiter=',')
-                for key, type in filters.items():
-                    if type == 'value':
-                        value.append(key)
-                    else:
-                        label.append(key)
                 for row in reader:
                     filter_row = {}
                     for key, type in filters.items():
-                        filter_row[key.lower()] = row[key].lower()
+                        try:
+                            filter_row[key.lower()] = row[key].lower()
+                            if type == 'label':
+                                if key not in label :
+                                    label.append(key)
+                            elif type == 'value':
+                                if key not in value:
+                                    value.append(key)
+                            else :
+                                logging.warning(f"The type '{type}' of '{key} 'is not recognise, setting as a value by default")
+                                self.scrape_with_errors = True
+                                value.append(key)
+                        except KeyError :
+                            logging.error(f'The key {key} was not recognise')
+                            self.scrape_with_errors = True
+                            continue
                     filtered_row.append(filter_row)
         except Exception as e:
             logging.error(f"Error while filtering the cable info: {e}")
-            raise ParsingError("Error while filtering the cable info")
+            self.scrape_with_errors = True
         return filtered_row, value, label
 
     def double_rm(self, myList):
@@ -105,7 +134,8 @@ class InfinibandCollector(object):
 
     def get_csv_value(self):
 
-        self.cable_info_raw, self.pm_info_raw, self.temp_sensing_raw = self.csv_global_parser(csv_file_input)
+        self.cable_info_raw, self.pm_info_raw, self.temp_sensing_raw, self.link_info_raw = self.csv_global_parser(csv_file_input)
+
         self.cable_info_filtered, self.cable_info_values, self.cable_info_labels = self.data_filter("cable_info_filters", self.cable_info_raw)
         self.temp_sensing_filtered, self.temp_sensing_values, self.temp_sensing_labels = self.data_filter("temp_sensing_filters", self.temp_sensing_raw)
         self.pm_info_filtered, self.pm_info_values, self.pm_info_labels = self.data_filter("pm_info_filters", self.pm_info_raw)
@@ -114,7 +144,6 @@ class InfinibandCollector(object):
 
         self.merged_info_labels = self.double_rm(self.cable_info_labels + self.pm_info_labels)
         self.merged_info_values = self.double_rm(self.cable_info_values + self.pm_info_values)
-
 
         if 'NodeGuid' not in self.merged_info_labels:
             self.merged_info_labels.append('NodeGuid')
@@ -130,8 +159,13 @@ class InfinibandCollector(object):
 
         self.temp_sensing_labels.append('NodeName')
         self.merged_info_labels.append('NodeName')
+
+
         self.labels = self.merged_info_labels
         self.values = self.merged_info_values
+
+        reader = csv.DictReader(self.link_info_raw, delimiter=',')
+
 
 
     def __init__(self, node_name_map):
@@ -148,6 +182,7 @@ class InfinibandCollector(object):
         self.device_temp['device_temperature'] = {
             'help': 'Device current temperature'
         }
+
 
         self.link_info = {
             'Link_State': {

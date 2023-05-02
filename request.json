@@ -1,13 +1,35 @@
 {
     "cable_info_filters": {
         "NodeGuid": "label",
-        "PortNum": "label",
+        "PortNum" : "label",
         "Temperature": "value"
     },
     "pm_info_filters" : {
         "NodeGUID" : "label",
         "PortNumber": "label",
-        "PortXmitWait": "value"
+        "PortXmitWait": "value",
+        "LinkDownedCounter": "value",
+        "PortXmitConstraintErrors": "value",
+        "PortSwLifetimeLimitDiscards": "value",
+        "PortXmitDiscards": "value",
+        "PortSwHOQLifetimeLimitDiscards": "value",
+        "PortXmitData": "value",
+        "PortRcvData": "value",
+        "PortXmitPkts": "value",
+        "PortRcvPkts": "value",
+        "PortRcvErrors": "value",
+        "PortBufferOverrunErrors": "value",
+        "PortLocalPhysicalErrors": "value",
+        "PortRcvRemotePhysicalErrors": "value",
+        "PortInactiveDiscards": "value",
+        "PortDLIDMappingErrors": "value",
+        "LinkErrorRecoveryCounter": "value",
+        "LocalLinkIntegrityErrors": "value",
+        "VL15Dropped": "value",
+        "PortNeighborMTUDiscards": "value",
+        "PortRcvConstraintErrors": "value",
+        "ExcessiveBufferOverrunErrors": "value",
+        "SymbolErrorCounter": "value"
     },
     "temp_sensing_filters" : {
         "NodeGUID": "label",
