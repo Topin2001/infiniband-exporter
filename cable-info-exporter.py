@@ -19,10 +19,12 @@ class InfinibandCollector(object):
 
     def csv_global_parser(self, csv_file_input):
         if csv_file_input == "/var/tmp/ibdiagnet2/ibdiagnet2.db_csv":
+            logging.debug(f'Start file generation process')
             cmd = f'ibdiagnet --get_phy_info --disable_output default --enable_output db_csv'
             subprocess.run(shlex.split(cmd),
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
+            logging.debug(f'End of file generation process')
         cable_info = []
         pm_info = []
         temp_sensing = []
@@ -158,15 +160,16 @@ class InfinibandCollector(object):
             self.merged_info_labels.remove('NodeGUID')
 
         self.temp_sensing_labels.append('NodeName')
-        self.merged_info_labels.append('NodeName')
+        self.merged_info_labels.extend(['NodeName', 'RemoteGuid', 'RemoteName', 'RemotePort'])
 
-
-        self.labels = self.merged_info_labels
-        self.values = self.merged_info_values
-
-        reader = csv.DictReader(self.link_info_raw, delimiter=',')
-
-
+    def link_connexion(self, lguid, lport):
+        rguid = ''
+        rport = ''
+        for line in csv.DictReader(self.link_info_raw, delimiter=','):
+            if line['NodeGuid1'] == lguid and line['PortNum1'] == lport :
+                rguid = line['NodeGuid2']
+                rport = line['PortNum2']
+        return rguid, rport
 
     def __init__(self, node_name_map):
 
@@ -192,11 +195,10 @@ class InfinibandCollector(object):
 
         self.link_info_regex = r'^(?P<LGuid>0x\w+)\s+\"\s*(?P<LName>[\w\-_ ]+)\"\s+\d+\s+(?P<LPort>\d+)\[\s+\]\s+\=+\(\s+.+(?P<State>Active|Down)\/\s*(?P<P_State>\w+)(?:.+(?P<RGuid>0x\w+)\s+\d+\s+(?P<RPort>\d+)\[\s+\]\s*\"\s*(?P<RName>[\w\-_ ]+).*|(?:()().*))$'
 
-        for value in self.values :
+        for value in self.merged_info_values :
             self.gauge[f'{value}'] = {
                     'help': f'Device/Cable current {value}.'
             }
-
 
     def init_metrics(self):
 
@@ -204,7 +206,7 @@ class InfinibandCollector(object):
             self.metrics[value] = GaugeMetricFamily(
                 'infiniband_' + value.lower(),
                 self.gauge[value]['help'],
-                labels = self.labels
+                labels = self.merged_info_labels
             )
         
         for value in self.device_temp:
@@ -291,16 +293,23 @@ class InfinibandCollector(object):
 
         for cable_info in self.info_merged :
             name = ""
+            remotename = ""
+            remoteguid, remoteport = self.link_connexion(cable_info['nodeguid'], cable_info['portnum'])
+            cable_info['remoteport'] = remoteport
+            cable_info['remoteguid'] = remoteguid
             if self.node_name_map :
                 with open(self.node_name_map, 'r') as file:
                     datas = file.readlines()
                     for data in datas:
                         if cable_info['nodeguid'] in data:
                             name = data.split(" ")[1].rstrip("\n")
+                        if cable_info['remoteguid'] in data and cable_info['remoteguid'] != "":
+                            remotename = data.split(" ")[1].rstrip("\n")
             cable_info['nodename'] = name
+            cable_info['remotename'] = remotename
             self.label_values = []
             self.value_values = 0
-            for label in self.labels:
+            for label in self.merged_info_labels:
                 self.label_values.append(cable_info[label.lower()])
             for value in self.gauge:
                 label_values = self.label_values
