@@ -75,11 +75,11 @@ class InfinibandCollector(object):
         return cable_info, pm_info, temp_sensing, link_info
 
     def data_filter(self, filter, info):
+        filtered_row = []
+        label = []
+        value = []
         try:
             with open('request.json') as f:
-                filtered_row = []
-                label = []
-                value = []
                 filters = json.load(f)[filter]
                 if filter == "cable_info_filters" and 'NodeGuid' not in filters:
                     filters['NodeGuid'] = 'label'
@@ -169,6 +169,11 @@ class InfinibandCollector(object):
             if line['NodeGuid1'] == lguid and line['PortNum1'] == lport :
                 rguid = line['NodeGuid2']
                 rport = line['PortNum2']
+        if rguid == '':
+            for line in csv.DictReader(self.link_info_raw, delimiter=','):
+                if line['NodeGuid2'] == lguid and line['PortNum2'] == lport :
+                    rguid = line['NodeGuid1']
+                    rport = line['PortNum1']
         return rguid, rport
 
     def __init__(self, node_name_map):
