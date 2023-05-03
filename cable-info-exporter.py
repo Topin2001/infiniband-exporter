@@ -20,10 +20,14 @@ class InfinibandCollector(object):
     def csv_global_parser(self, csv_file_input):
         if csv_file_input == "/var/tmp/ibdiagnet2/ibdiagnet2.db_csv":
             logging.debug(f'Start file generation process')
-            cmd = f'ibdiagnet --get_phy_info --disable_output default --enable_output db_csv'
-            subprocess.run(shlex.split(cmd),
+            try:
+                cmd = f'ibdiagnet --get_phy_info --disable_output default --enable_output db_csv'
+                subprocess.run(shlex.split(cmd),
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
+            except FileNotFoundError as e:
+                self.scrape_with_errors = True
+                logging.error(f'An error occured with the generation of the csv : {e}')
             logging.debug(f'End of file generation process')
         cable_info = []
         pm_info = []
@@ -72,6 +76,7 @@ class InfinibandCollector(object):
 
         except Exception as e:
             logging.critical(f"Error while reading the CSV file: {e}")
+            self.scrape_with_errors = True
         return cable_info, pm_info, temp_sensing, link_info
 
     def data_filter(self, filter, info):
@@ -89,6 +94,8 @@ class InfinibandCollector(object):
                     filters['NodeGUID'] = 'label'
                 if filter == "pm_info_filters" and 'PortNumber' not in filters:
                     filters['PortNumber'] = 'label'
+                if filter == "temp_sensing_filters" and 'NodeGUID' not in filters:
+                    filters['NodeGUID'] = 'label'
                 reader = csv.DictReader(info, delimiter=',')
                 for row in reader:
                     filter_row = {}
