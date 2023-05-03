@@ -29,6 +29,33 @@
         "PortNeighborMTUDiscards": "value",
         "PortRcvConstraintErrors": "value",
         "ExcessiveBufferOverrunErrors": "value",
+        "PortRcvSwitchRelayErrors": "value",
+        "PortXmitDataExtended": "value",
+        "PortRcvDataExtended": "value",
+        "PortXmitPktsExtended": "value",
+        "PortRcvPktsExtended": "value",
+        "PortUniCastXmitPkts": "value",
+        "PortUniCastRcvPkts": "value",
+        "PortMultiCastXmitPkts": "value",
+        "PortMultiCastRcvPkts": "value",
+        "SymbolErrorCounterExt": "value",
+        "LinkErrorRecoveryCounterExt": "value",
+        "LinkDownedCounterExt": "value",
+        "PortRcvErrorsExt": "value",
+        "PortRcvRemotePhysicalErrorsExt": "value",
+        "PortRcvSwitchRelayErrorsExt": "value",
+        "PortXmitDiscardsExt": "value",
+        "PortXmitConstraintErrorsExt": "value",
+        "PortRcvConstraintErrorsExt": "value",
+        "LocalLinkIntegrityErrorsExt": "value",
+        "ExcessiveBufferOverrunErrorsExt": "value",
+        "VL15DroppedExt": "value",
+        "PortXmitWaitExt": "value",
+        "QP1DroppedExt": "value",
+        "retransmission_per_sec": "value",
+        "PortMalformedPacketErrors": "value",
+        "PortVLMappingErrors": "value",
+        "PortLoopingErrors": "value",
         "SymbolErrorCounter": "value"
     },
     "temp_sensing_filters" : {
@@ -36,4 +63,12 @@
         "CurrentTemperature": "value"
     }
 }
-  
+
+
+
+
+
+
+
+
+
