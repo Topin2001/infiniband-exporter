@@ -236,14 +236,14 @@ class InfinibandCollector(object):
                 'infiniband_' + link_name.lower(),
                 self.link_info[link_name]['help'],
                 labels=[
-                    'local_name',
-                    'local_guid',
-                    'local_port',
+                    'NodeName',
+                    'NodeGuid',
+                    'PortNumber',
                     'state',
                     'physical_state',
-                    'remote_guid',
-                    'remote_port',
-                    'remote_name'
+                    'RemoteGuid',
+                    'RemotePort',
+                    'RemoteName'
                 ]
             )
 
