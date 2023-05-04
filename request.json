@@ -52,7 +52,6 @@
         "VL15DroppedExt": "value",
         "PortXmitWaitExt": "value",
         "QP1DroppedExt": "value",
-        "retransmission_per_sec": "value",
         "PortMalformedPacketErrors": "value",
         "PortVLMappingErrors": "value",
         "PortLoopingErrors": "value",
