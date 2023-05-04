@@ -60,6 +60,11 @@
     "temp_sensing_filters" : {
         "NodeGUID": "label",
         "CurrentTemperature": "value"
+    },
+    "fan_info_filter" : {
+        "NodeGuid": "label",
+        "SensorIndex" : "label",
+        "FanSpeed" : "value"
     }
 }
 
