@@ -307,7 +307,8 @@ class InfinibandCollector(object):
             name = ""
             remotename = ""
             remoteguid, remoteport = self.link_connexion(cable_info['nodeguid'], cable_info['portnum'])
-            cable_info['remoteport'] = remoteport
+            cable_info['remoteport'] = f"{int(remoteport):02}"
+            cable_info['portnumber'] = f"{int(cable_info['portnumber']):02}"
             cable_info['remoteguid'] = remoteguid
             if self.node_name_map :
                 with open(self.node_name_map, 'r') as file:
