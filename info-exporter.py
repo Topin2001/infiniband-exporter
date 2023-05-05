@@ -106,6 +106,10 @@ class InfinibandCollector(object):
                     filters['PortNumber'] = 'label'
                 if filter == "temp_sensing_filters" and 'NodeGUID' not in filters:
                     filters['NodeGUID'] = 'label'
+                if filter == "fan_info_filters" and 'NodeGUID' not in filters:
+                    filters['NodeGUID'] = 'label'
+                if filter == "fan_info_filters" and 'FanIndex' not in filters:
+                    filters['FanIndex'] = 'label'
                 reader = csv.DictReader(info, delimiter=',')
                 for row in reader:
                     filter_row = {}
@@ -388,6 +392,8 @@ class InfinibandCollector(object):
     def fan_link(self):
         for fan_info in self.fan_info_filtered :
             name = ""
+            fan_info['sensorindex'] = f"{int(fan_info['sensorindex']):02}"
+            print(fan_info)
             if self.node_name_map :
                 with open(self.node_name_map, 'r') as file:
                     datas = file.readlines()
