@@ -463,7 +463,6 @@ class InfinibandCollector(object):
                 self.label_values.append(power_info[label.lower()])
             for value in self.power_info:
                 label_values = self.label_values
-                print(power_info['dcstate'])
                 try :
                     self.value_values = 1 if power_info['dcstate'] == 'ok' else 0
                 except ValueError:
