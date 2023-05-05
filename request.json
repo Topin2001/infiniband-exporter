@@ -65,6 +65,11 @@
         "NodeGuid": "label",
         "SensorIndex" : "label",
         "FanSpeed" : "value"
+    },
+    "power_info_filter" : {
+        "NodeGuid" : "label",
+        "PSUIndex" : "label",
+        "DCState" : "value"
     }
 }
 
