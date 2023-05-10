@@ -172,7 +172,7 @@ class InfinibandCollector(object):
 
     def get_csv_value(self):
 
-        self.cable_info_raw, self.pm_info_raw, self.temp_sensing_raw, self.link_info_raw, self.fan_info_raw, self.power_info_raw = self.csv_global_parser(csv_file_input)
+        self.cable_info_raw, self.pm_info_raw, self.temp_sensing_raw, self.link_info_raw, self.fan_info_raw, self.power_info_raw = self.csv_global_parser(self.csv_file_input)
 
         self.cable_info_filtered, self.cable_info_values, self.cable_info_labels = self.data_filter("cable_info_filters", self.cable_info_raw)
         self.temp_sensing_filtered, self.temp_sensing_values, self.temp_sensing_labels = self.data_filter("temp_sensing_filters", self.temp_sensing_raw)
@@ -216,11 +216,13 @@ class InfinibandCollector(object):
                     rport = line['PortNum1']
         return rguid, rport
 
-    def __init__(self, node_name_map):
+    def __init__(self, node_name_map, csv_file_input):
 
-        self.get_csv_value()
 
         self.node_name_map = node_name_map
+        self.csv_file_input = csv_file_input
+        
+        self.get_csv_value()
 
         self.scrape_with_errors = False
         self.metrics = {}
@@ -581,8 +583,7 @@ class NoLoggingWSGIRequestHandler(WSGIRequestHandler):
     def log_message(self, format, *args):
         pass
 
-
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(
         description='Prometheus collector for a infiniband fabric')
     parser.add_argument("--verbose", help="increase output verbosity",
@@ -629,7 +630,10 @@ if __name__ == '__main__':
         node_name_map = None
 
 
-    app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map))
+    app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map, csv_file_input=csv_file_input))
     httpd = make_server('', args.port, app,
                         handler_class=NoLoggingWSGIRequestHandler)
     httpd.serve_forever()
+
+if __name__ == '__main__':
+    main()
