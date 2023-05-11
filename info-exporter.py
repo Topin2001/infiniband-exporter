@@ -350,16 +350,6 @@ class InfinibandCollector(object):
             self.metrics[link].add_metric(label_values, 1 if (item[3] == 'Active' and item[4] == 'LinkUp') else 0)
 
     def process_state(self, item):
-        """
-        The method processes ibquery ca and switch data.
-
-        Parameters:
-            * item (Generator[List[str]])
-
-        Throws:
-            ParsingError - Raised during parsing of input content due to inconsistencies.
-            RuntimeError - Raised on wrong data type for parameter passed.
-        """
 
         if not isinstance(item, list):
             raise RuntimeError('Wrong data type passed for item: {}'.format(type(item)))
@@ -520,7 +510,6 @@ class InfinibandCollector(object):
         if self.node_name_map:
             iblinkinfo_args.append('--node-name-map')
             iblinkinfo_args.append(self.node_name_map)
-        iblinkinfo_start = time.time()
         process = subprocess.Popen(iblinkinfo_args,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
