@@ -518,14 +518,9 @@ class InfinibandCollector(object):
         if process_stderr:
             iblinkinfo_stderr = process_stderr.decode("utf-8")
             
-            logging.debug("STDERR output retrieved from iblinkinfo:\n%s",
+            logging.warning("STDERR output retrieved from iblinkinfo:\n%s",
                 iblinkinfo_stderr)
-            stderr_metrics, error = self.build_stderr_metrics(
-                iblinkinfo_stderr)
-            for stderr_metric in stderr_metrics:
-                yield stderr_metric
-            if error:
-                self.scrape_with_errors = True
+            self.scrape_with_errors = True
 
         content = re.split(self.link_info_regex,
                            iblinkinfo_stdout,
