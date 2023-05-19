@@ -216,9 +216,9 @@ class InfinibandCollector(object):
                     rport = line['PortNum1']
         return rguid, rport
 
-    def __init__(self, node_name_map, csv_file_input):
+    def __init__(self, node_name_map, csv_file_input, can_reset_counter):
 
-
+        self.can_reset_counter = can_reset_counter
         self.node_name_map = node_name_map
         self.csv_file_input = csv_file_input
         
@@ -257,6 +257,90 @@ class InfinibandCollector(object):
             self.gauge[f'{value}'] = {
                     'help': f'Device/Cable current {value}.'
             }
+        
+        self.counter_info = {
+            'LinkDownedCounterExt': {
+                'bits': 8,
+            },
+            'SymbolErrorCounterExt': {
+                'bits': 16,
+            },
+            'PortXmitConstraintErrorsExt': {
+                'bits': 16,
+            },
+            'PortSwLifetimeLimitDiscards': {
+                'bits': 16,
+            },
+            'PortXmitDiscardsExt': {
+                'bits': 16,
+            },
+            'PortSwHOQLifetimeLimitDiscards': {
+                'bits': 16,
+            },
+            'PortXmitWaitExt': {
+                'bits': 64,
+            },
+            'PortXmitDataExtended': {
+                'bits': 64,
+            },
+            'PortRcvDataExtended': {
+                'bits': 64,
+            },
+            'PortXmitPktsExtended': {
+                'bits': 64,
+            },
+            'PortRcvPktsExtended': {
+                'bits': 64,
+            },
+            'PortRcvErrorsExt': {
+                'bits': 16,
+            },
+            'PortUnicastXmitPkts': {
+                'bits': 64,
+            },
+            'PortUnicastRcvPkts': {
+                'bits': 64,
+            },
+            'PortMulticastXmitPkts': {
+                'bits': 64,
+            },
+            'PortMulticastRcvPkts': {
+                'bits': 64,
+            },
+            'PortBufferOverrunErrors': {
+                'bits': 16,
+            },
+            'PortLocalPhysicalErrors': {
+                'bits': 16,
+            },
+            'PortRcvRemotePhysicalErrorsExt': {
+                'bits': 16,
+            },
+            'PortInactiveDiscards': {
+                'bits': 16,
+            },
+            'PortDLIDMappingErrors': {
+                'bits': 16,
+            },
+            'LinkErrorRecoveryCounterExt': {
+                'bits': 8,
+            },
+            'LocalLinkIntegrityErrorsExt': {
+                'bits': 4,
+            },
+            'VL15DroppedExt': {
+                'bits': 16,
+            },
+            'PortNeighborMTUDiscards': {
+                'bits': 16,
+            },
+            'PortRcvConstraintErrorsExt': {
+                'bits': 16,
+            },
+            'ExcessiveBufferOverrunErrorsExt': {
+                'bits': 16,
+            }
+        }
 
     def init_metrics(self):
 
@@ -318,6 +402,21 @@ class InfinibandCollector(object):
     def chunks(self, x, n):
         for i in range(0, len(x), n):
             yield x[i:i + n]
+
+    def reset_counter(self, guid, port):
+        if self.can_reset_counter:
+            logging.debug('Reseting counters on %s port %s due to %s',  # noqa: E501
+                         guid,
+                         port)
+            print(guid)
+            process = subprocess.Popen(['perfquery', '-R', '-G', guid, port],
+                                       stdout=subprocess.PIPE)
+            stdtout = process.communicate()
+            print(f'Stdout : {stdtout}')
+        else:
+            logging.warning('Counters on %s port %s is maxed out on %s',  # noqa: E501
+                            guid,
+                            port)
 
     def parse_state(self, item):
 
@@ -383,13 +482,16 @@ class InfinibandCollector(object):
             for label in self.merged_info_labels:
                 self.label_values.append(cable_info[label.lower()])
             for value in self.gauge:
-                label_values = self.label_values
                 try :
                     self.value_values = int(cable_info[value.lower()].rstrip('c'))
+                    if value in self.counter_info:
+                        if self.value_values >= 2** (self.counter_info[value]['bits']-1):
+                            #self.reset_counter(cable_info['nodeguid'], cable_info['portnum'])
+                            logging.debug(f"The value {value} of {cable_info['nodeguid']} has been reset (reset_counter not working)")
                 except ValueError:
                     logging.debug(f'The value {value} is not an int.')
 
-                self.metrics[value].add_metric(label_values, self.value_values)
+                self.metrics[value].add_metric(self.label_values, self.value_values)
 
     def temp_link(self):
         for temp_info in self.temp_sensing_filtered :
@@ -588,6 +690,11 @@ def main():
         action='store',
         dest='node_name_map',
         help='Node name map used by ibqueryerrors.')
+    parser.add_argument(
+        '--can-reset-counter',
+        dest='can_reset_counter',
+        help='Will reset counter as required when maxed out.',
+        action='store_true')
 
 
     args = parser.parse_args()
@@ -612,9 +719,16 @@ def main():
     else:
         logging.debug('No node-name-map was provided')
         node_name_map = None
+    
+    if args.can_reset_counter:
+        logging.debug('can_reset_counter provided in args')
+        can_reset_counter = True
+    else:
+        logging.debug('Counters will not reset automatically')
+        can_reset_counter = False
 
 
-    app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map, csv_file_input=csv_file_input))
+    app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map, csv_file_input=csv_file_input, can_reset_counter=can_reset_counter))
     httpd = make_server('', args.port, app,
                         handler_class=NoLoggingWSGIRequestHandler)
     httpd.serve_forever()
