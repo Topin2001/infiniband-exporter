@@ -20,9 +20,10 @@ You can choose to give a defined csv to the exporter, to generate it, you should
 
 The exporter will export request data onto a webpage, in a pro;etheus format. Default port is 9685.
 
-```python3 info-exporter.py [--port = 9685] [--node-name-map] [--csv-file-input = /var/tmp/ibdiagnet2/ibdiagnet2.db_csv] [--verbose]```
+```python3 info-exporter.py [--port = 9685] [--node-name-map] [--csv-file-input = /var/tmp/ibdiagnet2/ibdiagnet2.db_csv] [--verbose] [--can-reset-counter]```
 
 where :
 
 - node-name-map is the guid_2_name.txt file like generated before
 - csv-file-input is the file to parse if not the default one
+- can reset counter allow the script to reset the counters of a port when one of those reach the top value
