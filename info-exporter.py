@@ -405,7 +405,7 @@ class InfinibandCollector(object):
 
     def reset_counter(self, guid, port):
         if self.can_reset_counter:
-            logging.debug('Reseting counters on %s port %s due to %s',  # noqa: E501
+            logging.debug('Reseting counters on %s port %s',  # noqa: E501
                          guid,
                          port)
             print(guid)
@@ -414,7 +414,7 @@ class InfinibandCollector(object):
             stdtout = process.communicate()
             print(f'Stdout : {stdtout}')
         else:
-            logging.warning('Counters on %s port %s is maxed out on %s',  # noqa: E501
+            logging.warning('Counters on %s port %s',  # noqa: E501
                             guid,
                             port)
 
@@ -485,9 +485,9 @@ class InfinibandCollector(object):
                 try :
                     self.value_values = int(cable_info[value.lower()].rstrip('c'))
                     if value in self.counter_info:
-                        if self.value_values >= 2** (self.counter_info[value]['bits']-1):
-                            #self.reset_counter(cable_info['nodeguid'], cable_info['portnum'])
-                            logging.debug(f"The value {value} of {cable_info['nodeguid']} has been reset (reset_counter not working)")
+                        if self.value_values >= (self.counter_info[value]['bits']-1):
+                            self.reset_counter(cable_info['nodeguid'], cable_info['portnum'])
+                            logging.debug(f"The value {value} of {cable_info['nodeguid']} has been reset")
                 except ValueError:
                     logging.debug(f'The value {value} is not an int.')
 
