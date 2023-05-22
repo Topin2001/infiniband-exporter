@@ -485,7 +485,7 @@ class InfinibandCollector(object):
                 try :
                     self.value_values = int(cable_info[value.lower()].rstrip('c'))
                     if value in self.counter_info:
-                        if self.value_values >= (self.counter_info[value]['bits']-1):
+                        if self.value_values >= 2 ** (self.counter_info[value]['bits']-1):
                             self.reset_counter(cable_info['nodeguid'], cable_info['portnum'])
                             logging.debug(f"The value {value} of {cable_info['nodeguid']} has been reset")
                 except ValueError:
