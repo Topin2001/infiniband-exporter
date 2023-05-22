@@ -408,11 +408,9 @@ class InfinibandCollector(object):
             logging.debug('Reseting counters on %s port %s',  # noqa: E501
                          guid,
                          port)
-            print(guid)
             process = subprocess.Popen(['perfquery', '-R', '-G', guid, port],
                                        stdout=subprocess.PIPE)
             stdtout = process.communicate()
-            print(f'Stdout : {stdtout}')
         else:
             logging.warning('Counters on %s port %s',  # noqa: E501
                             guid,
