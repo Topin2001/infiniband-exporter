@@ -574,8 +574,9 @@ class InfinibandCollector(object):
 
         logging.debug('Start of collection cycle')
 
-        print(f'Scrape start')
-
+        t = time.localtime()
+        current_time = time.strftime("%H:%M:%S", t)
+        print(f'{current_time}Scrape start')
         self.scrape_with_errors = False
         
         scrape_duration = GaugeMetricFamily(
@@ -671,7 +672,9 @@ class InfinibandCollector(object):
         yield scrape_ok
 
         logging.debug('End of collection cycle')
-        print(f'Scrape end')
+        t = time.localtime()
+        current_time = time.strftime("%H:%M:%S", t)
+        print(f'{current_time}Scrape end in {scrape_duration}')
 
 
 
