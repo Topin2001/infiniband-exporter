@@ -739,8 +739,8 @@ def main():
     app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map, csv_file_input=csv_file_input, can_reset_counter=can_reset_counter))
     httpd = make_server('', args.port, app,
                         handler_class=NoLoggingWSGIRequestHandler)
+    print(f'Request received')
     httpd.serve_forever()
 
 if __name__ == '__main__':
-    print(f'Request received')
     main()
