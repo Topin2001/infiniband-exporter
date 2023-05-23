@@ -405,7 +405,7 @@ class InfinibandCollector(object):
 
     def reset_counter(self, guid, port):
         if self.can_reset_counter:
-            logging.debug('Reseting counters on %s port %s',  # noqa: E501
+            logging.info('Reseting counters on %s port %s',  # noqa: E501
                          guid,
                          port)
             process = subprocess.Popen(['perfquery', '-R', '-G', guid, port],
