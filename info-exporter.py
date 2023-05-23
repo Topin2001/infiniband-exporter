@@ -316,12 +316,6 @@ class InfinibandCollector(object):
             'PortRcvRemotePhysicalErrorsExt': {
                 'bits': 16,
             },
-            'PortInactiveDiscards': {
-                'bits': 32, #change from 16
-            },
-            'PortDLIDMappingErrors': {
-                'bits': 32, #change from 16
-            },
             'LinkErrorRecoveryCounterExt': {
                 'bits': 8,
             },
