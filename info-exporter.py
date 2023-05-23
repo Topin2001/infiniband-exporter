@@ -317,10 +317,10 @@ class InfinibandCollector(object):
                 'bits': 16,
             },
             'PortInactiveDiscards': {
-                'bits': 16,
+                'bits': 32, #change from 16
             },
             'PortDLIDMappingErrors': {
-                'bits': 16,
+                'bits': 32, #change from 16
             },
             'LinkErrorRecoveryCounterExt': {
                 'bits': 8,
@@ -573,6 +573,8 @@ class InfinibandCollector(object):
     def collect(self):
 
         logging.debug('Start of collection cycle')
+
+        print(f'Scrape start')
 
         self.scrape_with_errors = False
         
