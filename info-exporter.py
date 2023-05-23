@@ -403,18 +403,27 @@ class InfinibandCollector(object):
         for i in range(0, len(x), n):
             yield x[i:i + n]
 
-    def reset_counter(self, guid, port):
+    def reset_counter(self, guid, port, reason):
+        name = guid
+        if self.node_name_map :
+                with open(self.node_name_map, 'r') as file:
+                    datas = file.readlines()
+                    for data in datas:
+                        if guid in data:
+                            name = data.split(" ")[1].rstrip("\n")
         if self.can_reset_counter:
-            logging.info('Reseting counters on %s port %s',  # noqa: E501
-                         guid,
-                         port)
+            logging.info('Reseting counters on %s port %s, due to %s',  # noqa: E501
+                         name,
+                         port,
+                         reason)
             process = subprocess.Popen(['perfquery', '-R', '-G', guid, port],
                                        stdout=subprocess.PIPE)
             stdtout = process.communicate()
         else:
-            logging.warning('Counters on %s port %s',  # noqa: E501
-                            guid,
-                            port)
+            logging.warning('Counters on %s port %s due to %s is overload',  # noqa: E501
+                            name,
+                            port,
+                            reason)
 
     def parse_state(self, item):
 
@@ -484,8 +493,7 @@ class InfinibandCollector(object):
                     self.value_values = int(cable_info[value.lower()].rstrip('c'))
                     if value in self.counter_info:
                         if self.value_values >= 2 ** (self.counter_info[value]['bits']-1):
-                            #self.reset_counter(cable_info['nodeguid'], cable_info['portnum'])
-                            logging.debug(f"The value {value} of {cable_info['nodeguid']} has been reset")
+                            self.reset_counter(cable_info['nodeguid'], cable_info['portnum'], value)
                 except ValueError:
                     logging.debug(f'The value {value} is not an int.')
 
