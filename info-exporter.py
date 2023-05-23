@@ -21,7 +21,7 @@ class InfinibandCollector(object):
         if csv_file_input == "/var/tmp/ibdiagnet2/ibdiagnet2.db_csv":
             logging.debug(f'Start file generation process')
             try:
-                cmd = f'ibdiagnet --get_phy_info --pm_pause=0 --disable_output default --enable_output db_csv'
+                cmd = f'ibdiagnet --get_phy_info --disable_output default --enable_output db_csv'
                 subprocess.run(shlex.split(cmd),
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
@@ -742,4 +742,5 @@ def main():
     httpd.serve_forever()
 
 if __name__ == '__main__':
+    print(f'Request received')
     main()
