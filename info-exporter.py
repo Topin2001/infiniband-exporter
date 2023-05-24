@@ -4,6 +4,8 @@ import argparse
 import json
 import re
 import shlex
+import tempfile
+import os
 import subprocess
 import time
 
@@ -18,98 +20,99 @@ class ParsingError(Exception):
 class InfinibandCollector(object):
 
     def csv_global_parser(self, csv_file_input):
-        if csv_file_input == "/var/tmp/ibdiagnet2/ibdiagnet2.db_csv":
-            logging.debug(f'Start file generation process')
+        with tempfile.TemporaryDirectory(prefix='ibdiag_pars') as temp_dir:
+            if csv_file_input == "/var/tmp/ibdiagnet2/ibdiagnet2.db_csv":
+                logging.debug(f'Start file generation process')
+                try:
+                    if self.phy:
+                        cmd = f'ibdiagnet --pm_pause_time 0 -o {temp_dir} --get_phy_info --disable_output default --enable_output db_csv'
+                    else :
+                        cmd = f'ibdiagnet --pm_pause_time 0 -o {temp_dir} --disable_output default --enable_output db_csv'
+                    subprocess.run(shlex.split(cmd),
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                except FileNotFoundError as e:
+                    self.scrape_with_errors = True
+                    logging.error(f'An error occured with the generation of the csv : {e}')
+                logging.debug(f'End of file generation process')
+            cable_info = []
+            pm_info = []
+            temp_sensing = []
+            link_info = []
+            fan_info = []
+            power_info = []
+            temp_info = []
             try:
-                if self.phy:
-                    cmd = f'ibdiagnet --pm_pause_time 0 --get_phy_info --disable_output default --enable_output db_csv'
-                else :
-                    cmd = f'ibdiagnet --pm_pause_time 0 --disable_output default --enable_output db_csv'
-                subprocess.run(shlex.split(cmd),
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            except FileNotFoundError as e:
-                self.scrape_with_errors = True
-                logging.error(f'An error occured with the generation of the csv : {e}')
-            logging.debug(f'End of file generation process')
-        cable_info = []
-        pm_info = []
-        temp_sensing = []
-        link_info = []
-        fan_info = []
-        power_info = []
-        temp_info = []
-        try:
-            with open(csv_file_input, mode='r') as csvfile:
-                reader = csv.reader(csvfile, delimiter=',')
-                isCableInfoData = False
-                isTempSensingData = False
-                isPmInfoData = False
-                isLinkInfo = False
-                isFanInfo = False
-                isPowerInfo = False
-                isTempInfo = False
-                for row in reader:
-                    if 'END_CABLE_INFO' in row:
-                        logging.debug('Now out of cable info table')
-                        isCableInfoData = False
-                    if isCableInfoData:
-                        cable_info.append(','.join(row))
-                    if 'START_CABLE_INFO' in row:
-                        logging.debug('Now in cable info table')
-                        isCableInfoData = True
-                    if 'END_TEMP_SENSING' in row:
-                        logging.debug('Now out of temp sensing table')
-                        isTempSensingData = False
-                    if isTempSensingData:
-                        temp_sensing.append(','.join(row))
-                    if 'START_TEMP_SENSING' in row:
-                        logging.debug('Now in temp sensing table')
-                        isTempSensingData = True
-                    if 'END_PM_INFO' in row:
-                        logging.debug('Now out of pm info table')
-                        isPmInfoData = False
-                    if isPmInfoData:
-                        pm_info.append(','.join(row))
-                    if 'START_PM_INFO' in row:
-                        logging.debug('Now in pm info table')
-                        isPmInfoData = True
-                    if 'END_LINKS' in row:
-                        logging.debug('Now out of link info table')
-                        isLinkInfo = False
-                    if isLinkInfo:
-                        link_info.append(','.join(row))
-                    if 'START_LINKS' in row:
-                        logging.debug('Now in link info table')
-                        isLinkInfo = True
-                    if 'END_FANS_SPEED' in row:
-                        logging.debug('Now out of fan info table')
-                        isFanInfo = False
-                    if isFanInfo:
-                        fan_info.append(','.join(row))
-                    if 'START_FANS_SPEED' in row:
-                        logging.debug('Now in fan info table')
-                        isFanInfo = True
-                    if 'END_POWER_SUPPLIES' in row:
-                        logging.debug('Now out of power info table')
-                        isPowerInfo = False
-                    if isPowerInfo:
-                        power_info.append(','.join(row))
-                    if 'START_POWER_SUPPLIES' in row:
-                        logging.debug('Now in fan info table')
-                        isPowerInfo = True
-                    if 'END_TEMPERATURE_SENSORS' in row:
-                        logging.debug('Now out of temperature info table')
-                        isTempInfo = False
-                    if isTempInfo:
-                        temp_info.append(','.join(row))
-                    if 'START_TEMPERATURE_SENSORS' in row:
-                        logging.debug('Now in temperature info table')
-                        isTempInfo = True
+                with open(os.path.join(temp_dir, 'ibdiagnet2.db_csv'), mode='r') as csvfile:
+                    reader = csv.reader(csvfile, delimiter=',')
+                    isCableInfoData = False
+                    isTempSensingData = False
+                    isPmInfoData = False
+                    isLinkInfo = False
+                    isFanInfo = False
+                    isPowerInfo = False
+                    isTempInfo = False
+                    for row in reader:
+                        if 'END_CABLE_INFO' in row:
+                            logging.debug('Now out of cable info table')
+                            isCableInfoData = False
+                        if isCableInfoData:
+                            cable_info.append(','.join(row))
+                        if 'START_CABLE_INFO' in row:
+                            logging.debug('Now in cable info table')
+                            isCableInfoData = True
+                        if 'END_TEMP_SENSING' in row:
+                            logging.debug('Now out of temp sensing table')
+                            isTempSensingData = False
+                        if isTempSensingData:
+                            temp_sensing.append(','.join(row))
+                        if 'START_TEMP_SENSING' in row:
+                            logging.debug('Now in temp sensing table')
+                            isTempSensingData = True
+                        if 'END_PM_INFO' in row:
+                            logging.debug('Now out of pm info table')
+                            isPmInfoData = False
+                        if isPmInfoData:
+                            pm_info.append(','.join(row))
+                        if 'START_PM_INFO' in row:
+                            logging.debug('Now in pm info table')
+                            isPmInfoData = True
+                        if 'END_LINKS' in row:
+                            logging.debug('Now out of link info table')
+                            isLinkInfo = False
+                        if isLinkInfo:
+                            link_info.append(','.join(row))
+                        if 'START_LINKS' in row:
+                            logging.debug('Now in link info table')
+                            isLinkInfo = True
+                        if 'END_FANS_SPEED' in row:
+                            logging.debug('Now out of fan info table')
+                            isFanInfo = False
+                        if isFanInfo:
+                            fan_info.append(','.join(row))
+                        if 'START_FANS_SPEED' in row:
+                            logging.debug('Now in fan info table')
+                            isFanInfo = True
+                        if 'END_POWER_SUPPLIES' in row:
+                            logging.debug('Now out of power info table')
+                            isPowerInfo = False
+                        if isPowerInfo:
+                            power_info.append(','.join(row))
+                        if 'START_POWER_SUPPLIES' in row:
+                            logging.debug('Now in fan info table')
+                            isPowerInfo = True
+                        if 'END_TEMPERATURE_SENSORS' in row:
+                            logging.debug('Now out of temperature info table')
+                            isTempInfo = False
+                        if isTempInfo:
+                            temp_info.append(','.join(row))
+                        if 'START_TEMPERATURE_SENSORS' in row:
+                            logging.debug('Now in temperature info table')
+                            isTempInfo = True
 
-        except Exception as e:
-            logging.critical(f"Error while reading the CSV file: {e}")
-            self.scrape_with_errors = True
+            except Exception as e:
+                logging.critical(f"Error while reading the CSV file: {e}")
+                self.scrape_with_errors = True
         return cable_info, pm_info, temp_sensing, link_info, fan_info, power_info, temp_info
 
     def data_filter(self, filter, info):
