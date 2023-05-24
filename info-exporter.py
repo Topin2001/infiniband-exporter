@@ -35,6 +35,7 @@ class InfinibandCollector(object):
         link_info = []
         fan_info = []
         power_info = []
+        temp_info = []
         try:
             with open(csv_file_input, mode='r') as csvfile:
                 reader = csv.reader(csvfile, delimiter=',')
@@ -44,6 +45,7 @@ class InfinibandCollector(object):
                 isLinkInfo = False
                 isFanInfo = False
                 isPowerInfo = False
+                isTempInfo = False
                 for row in reader:
                     if 'END_CABLE_INFO' in row:
                         logging.debug('Now out of cable info table')
@@ -93,11 +95,19 @@ class InfinibandCollector(object):
                     if 'START_POWER_SUPPLIES' in row:
                         logging.debug('Now in fan info table')
                         isPowerInfo = True
+                    if 'END_TEMPERATURE_SENSORS' in row:
+                        logging.debug('Now out of temperature info table')
+                        isTempInfo = False
+                    if isTempInfo:
+                        temp_info.append(','.join(row))
+                    if 'START_TEMPERATURE_SENSORS' in row:
+                        logging.debug('Now in temperature info table')
+                        isTempInfo = True
 
         except Exception as e:
             logging.critical(f"Error while reading the CSV file: {e}")
             self.scrape_with_errors = True
-        return cable_info, pm_info, temp_sensing, link_info, fan_info, power_info
+        return cable_info, pm_info, temp_sensing, link_info, fan_info, power_info, temp_info
 
     def data_filter(self, filter, info):
         filtered_row = []
@@ -124,6 +134,10 @@ class InfinibandCollector(object):
                     filters['NodeGuid'] = 'label'
                 if filter == "power_info_filter" and 'PSUIndex' not in filters:
                     filters['PSUIndex'] = 'label'
+                if filter == "temperature_sensors_filter" and 'NodeGuid' not in filters:
+                    filters['NodeGuid'] = 'label'
+                if filter == "temperature_sensors_filter" and 'SensorIndex' not in filters:
+                    filters['SensorIndex'] = 'label'
                 
                 reader = csv.DictReader(info, delimiter=',')
                 for row in reader:
@@ -172,13 +186,14 @@ class InfinibandCollector(object):
 
     def get_csv_value(self):
 
-        self.cable_info_raw, self.pm_info_raw, self.temp_sensing_raw, self.link_info_raw, self.fan_info_raw, self.power_info_raw = self.csv_global_parser(self.csv_file_input)
+        self.cable_info_raw, self.pm_info_raw, self.temp_sensing_raw, self.link_info_raw, self.fan_info_raw, self.power_info_raw, self.temp_info_raw = self.csv_global_parser(self.csv_file_input)
 
         self.cable_info_filtered, self.cable_info_values, self.cable_info_labels = self.data_filter("cable_info_filters", self.cable_info_raw)
         self.temp_sensing_filtered, self.temp_sensing_values, self.temp_sensing_labels = self.data_filter("temp_sensing_filters", self.temp_sensing_raw)
         self.pm_info_filtered, self.pm_info_values, self.pm_info_labels = self.data_filter("pm_info_filters", self.pm_info_raw)
         self.fan_info_filtered, self.fan_info_values, self.fan_info_labels = self.data_filter("fan_info_filter", self.fan_info_raw)
         self.power_info_filtered, self.power_info_values, self.power_info_labels = self.data_filter("power_info_filter", self.power_info_raw)
+        self.temp_info_filtered, self.temp_info_values, self.temp_info_labels = self.data_filter("temperature_sensors_filter", self.temp_info_raw)
 
         self.info_merged = self.join_csv(self.cable_info_filtered, self.pm_info_filtered)
 
@@ -200,6 +215,7 @@ class InfinibandCollector(object):
         self.temp_sensing_labels.append('NodeName')
         self.fan_info_labels.append('NodeName')
         self.power_info_labels.append('NodeName')
+        self.temp_info_labels.append('NodeName')
         self.merged_info_labels.extend(['NodeName', 'RemoteGuid', 'RemoteName', 'RemotePort'])
 
     def link_connexion(self, lguid, lport):
@@ -248,6 +264,12 @@ class InfinibandCollector(object):
         self.fan_info = {
             'fan_speed':{
                 'help':'Fan current speed'
+            }
+        }
+
+        self.temp_info = {
+            'temp_info':{
+                'help':'Switch current temperatures'
             }
         }
 
@@ -375,6 +397,13 @@ class InfinibandCollector(object):
                 'NodeGuid',
                 'NodeName'
                 ]
+            )
+
+        for value in self.temp_info:
+            self.metrics[value] = GaugeMetricFamily(
+                'infiniband_' + value.lower(),
+                self.temp_info[value]['help'],
+                labels = self.temp_info_labels
             )
 
         for link_name in self.link_info:
@@ -564,6 +593,29 @@ class InfinibandCollector(object):
 
                 self.metrics[value].add_metric(label_values, self.value_values)
 
+    def temp_sens_link(self):
+        for temp_info in self.temp_info_filtered :
+            name = ""
+            if self.node_name_map :
+                with open(self.node_name_map, 'r') as file:
+                    datas = file.readlines()
+                    for data in datas:
+                        if temp_info['nodeguid'] in data:
+                            name = data.split(" ")[1].rstrip("\n")
+            temp_info['nodename'] = name
+            self.label_values = []
+            self.value_values = 0
+            for label in self.temp_info_labels:
+                self.label_values.append(temp_info[label.lower()])
+            for value in self.temp_info_values:
+                label_values = self.label_values
+                try :
+                    self.value_values = int(float(temp_info[value.lower()]))
+                except ValueError:
+                    logging.info(f'The value {value} is not an int.')
+                #print(value, label_values, self.value_values)
+                self.metrics['temp_info'].add_metric(label_values, self.value_values)
+
     def collect(self):
 
         logging.debug('Start of collection cycle')
@@ -591,6 +643,8 @@ class InfinibandCollector(object):
 
         self.power_link()
 
+        self.temp_sens_link()
+
         for value in self.gauge:
             yield self.metrics[value]
 
@@ -601,6 +655,9 @@ class InfinibandCollector(object):
             yield self.metrics[value]
 
         for value in self.power_info:
+            yield self.metrics[value]
+
+        for value in self.temp_info:
             yield self.metrics[value]
         
         iblinkinfo_stdout = ""

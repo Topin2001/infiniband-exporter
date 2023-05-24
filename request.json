@@ -70,6 +70,12 @@
         "NodeGuid" : "label",
         "PSUIndex" : "label",
         "DCState" : "value"
+    },
+    "temperature_sensors_filter" : {
+        "NodeGuid" : "label",
+        "SensorIndex" : "label",
+        "SensorName" : "label",
+        "Temperature" : "value"
     }
 }
 
