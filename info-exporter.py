@@ -238,13 +238,14 @@ class InfinibandCollector(object):
                     rport = line['PortNum1']
         return rguid, rport
 
-    def __init__(self, node_name_map, csv_file_input, can_reset_counter, phy, link_state):
+    def __init__(self, node_name_map, csv_file_input, can_reset_counter, phy, link_state, asic_temperature):
 
         self.can_reset_counter = can_reset_counter
         self.node_name_map = node_name_map
         self.csv_file_input = csv_file_input
         self.phy = phy
         self.link_state = link_state
+        self.asic_temperature = asic_temperature
         
         self.get_csv_value()
 
@@ -252,12 +253,13 @@ class InfinibandCollector(object):
         self.metrics = {}
         self.asic_temp = {}
         self.gauge = {}
+        
+        if self.asic_temperature:
+            self.asic_temp['asic_temperature'] = {
+                'help': 'Asic current temperature'
+            }
 
-        self.asic_temp['asic_temperature'] = {
-            'help': 'Asic current temperature'
-        }
-
-        if link_state:
+        if self.link_state:
             self.link_info = {
                 'Link_State': {
                     'help': 'Link current state.',
@@ -407,18 +409,17 @@ class InfinibandCollector(object):
                     self.temp_info[value]['help'],
                     labels = self.temp_info_labels
                 )
-        
-        for value in self.asic_temp:
-            self.metrics[value] = GaugeMetricFamily(
-                'infiniband_' + value.lower(),
-                self.asic_temp[value]['help'],
-                labels = [
-                'NodeGuid',
-                'NodeName'
-                ]
-            )
 
-
+        if self.asic_temperature:
+            for value in self.asic_temp:
+                self.metrics[value] = GaugeMetricFamily(
+                    'infiniband_' + value.lower(),
+                    self.asic_temp[value]['help'],
+                    labels = [
+                    'NodeGuid',
+                    'NodeName'
+                    ]
+                )
 
         if self.link_state:
             for link_name in self.link_info:
@@ -652,7 +653,8 @@ class InfinibandCollector(object):
 
         self.data_link()
         
-        self.temp_link()
+        if self.asic_temperature:
+            self.temp_link()
 
         if self.phy:
 
@@ -664,9 +666,10 @@ class InfinibandCollector(object):
 
         for value in self.gauge:
             yield self.metrics[value]
-
-        for value in self.asic_temp:
-            yield self.metrics[value]
+        
+        if self.asic_temperature:        
+            for value in self.asic_temp:
+                yield self.metrics[value]
 
         if self.phy:
             for value in self.fan_info:
@@ -780,6 +783,11 @@ def main():
         dest='link_state',
         help='Will provided link state info.',
         action='store_true')
+    parser.add_argument(
+        '--asic_temp',
+        dest='asic_temp',
+        help='Will provided asic temperature info.',
+        action='store_true')
 
 
     args = parser.parse_args()
@@ -826,8 +834,15 @@ def main():
         logging.debug('Link State info will not be provided')
         link_state = False
 
+    if args.asic_temp:
+        logging.debug('Asic temp provided in args')
+        asic_temp = True
+    else:
+        logging.debug('asic temp info will not be provided')
+        asic_temp = False
 
-    app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map, csv_file_input=csv_file_input, can_reset_counter=can_reset_counter, phy=phy, link_state=link_state))
+
+    app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map, csv_file_input=csv_file_input, can_reset_counter=can_reset_counter, phy=phy, link_state=link_state, asic_temperature=asic_temp))
     httpd = make_server('', args.port, app,
                         handler_class=NoLoggingWSGIRequestHandler)
     httpd.serve_forever()
