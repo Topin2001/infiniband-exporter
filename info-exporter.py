@@ -4,6 +4,8 @@ import argparse
 import json
 import re
 import shlex
+import tempfile
+import os
 import subprocess
 import time
 
@@ -18,95 +20,99 @@ class ParsingError(Exception):
 class InfinibandCollector(object):
 
     def csv_global_parser(self, csv_file_input):
-        if csv_file_input == "/var/tmp/ibdiagnet2/ibdiagnet2.db_csv":
-            logging.debug(f'Start file generation process')
+        with tempfile.TemporaryDirectory(prefix='ibdiag_pars') as temp_dir:
+            if csv_file_input == "/var/tmp/ibdiagnet2/ibdiagnet2.db_csv":
+                logging.debug(f'Start file generation process')
+                try:
+                    if self.phy:
+                        cmd = f'ibdiagnet --pm_pause_time 0 -o {temp_dir} --get_phy_info --disable_output default --enable_output db_csv'
+                    else :
+                        cmd = f'ibdiagnet --pm_pause_time 0 -o {temp_dir} --disable_output default --enable_output db_csv'
+                    subprocess.run(shlex.split(cmd),
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                except FileNotFoundError as e:
+                    self.scrape_with_errors = True
+                    logging.error(f'An error occured with the generation of the csv : {e}')
+                logging.debug(f'End of file generation process')
+            cable_info = []
+            pm_info = []
+            temp_sensing = []
+            link_info = []
+            fan_info = []
+            power_info = []
+            temp_info = []
             try:
-                cmd = f'ibdiagnet --get_phy_info --disable_output default --enable_output db_csv'
-                subprocess.run(shlex.split(cmd),
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            except FileNotFoundError as e:
-                self.scrape_with_errors = True
-                logging.error(f'An error occured with the generation of the csv : {e}')
-            logging.debug(f'End of file generation process')
-        cable_info = []
-        pm_info = []
-        temp_sensing = []
-        link_info = []
-        fan_info = []
-        power_info = []
-        temp_info = []
-        try:
-            with open(csv_file_input, mode='r') as csvfile:
-                reader = csv.reader(csvfile, delimiter=',')
-                isCableInfoData = False
-                isTempSensingData = False
-                isPmInfoData = False
-                isLinkInfo = False
-                isFanInfo = False
-                isPowerInfo = False
-                isTempInfo = False
-                for row in reader:
-                    if 'END_CABLE_INFO' in row:
-                        logging.debug('Now out of cable info table')
-                        isCableInfoData = False
-                    if isCableInfoData:
-                        cable_info.append(','.join(row))
-                    if 'START_CABLE_INFO' in row:
-                        logging.debug('Now in cable info table')
-                        isCableInfoData = True
-                    if 'END_TEMP_SENSING' in row:
-                        logging.debug('Now out of temp sensing table')
-                        isTempSensingData = False
-                    if isTempSensingData:
-                        temp_sensing.append(','.join(row))
-                    if 'START_TEMP_SENSING' in row:
-                        logging.debug('Now in temp sensing table')
-                        isTempSensingData = True
-                    if 'END_PM_INFO' in row:
-                        logging.debug('Now out of pm info table')
-                        isPmInfoData = False
-                    if isPmInfoData:
-                        pm_info.append(','.join(row))
-                    if 'START_PM_INFO' in row:
-                        logging.debug('Now in pm info table')
-                        isPmInfoData = True
-                    if 'END_LINKS' in row:
-                        logging.debug('Now out of link info table')
-                        isLinkInfo = False
-                    if isLinkInfo:
-                        link_info.append(','.join(row))
-                    if 'START_LINKS' in row:
-                        logging.debug('Now in link info table')
-                        isLinkInfo = True
-                    if 'END_FANS_SPEED' in row:
-                        logging.debug('Now out of fan info table')
-                        isFanInfo = False
-                    if isFanInfo:
-                        fan_info.append(','.join(row))
-                    if 'START_FANS_SPEED' in row:
-                        logging.debug('Now in fan info table')
-                        isFanInfo = True
-                    if 'END_POWER_SUPPLIES' in row:
-                        logging.debug('Now out of power info table')
-                        isPowerInfo = False
-                    if isPowerInfo:
-                        power_info.append(','.join(row))
-                    if 'START_POWER_SUPPLIES' in row:
-                        logging.debug('Now in fan info table')
-                        isPowerInfo = True
-                    if 'END_TEMPERATURE_SENSORS' in row:
-                        logging.debug('Now out of temperature info table')
-                        isTempInfo = False
-                    if isTempInfo:
-                        temp_info.append(','.join(row))
-                    if 'START_TEMPERATURE_SENSORS' in row:
-                        logging.debug('Now in temperature info table')
-                        isTempInfo = True
+                with open(os.path.join(temp_dir, 'ibdiagnet2.db_csv'), mode='r') as csvfile:
+                    reader = csv.reader(csvfile, delimiter=',')
+                    isCableInfoData = False
+                    isTempSensingData = False
+                    isPmInfoData = False
+                    isLinkInfo = False
+                    isFanInfo = False
+                    isPowerInfo = False
+                    isTempInfo = False
+                    for row in reader:
+                        if 'END_CABLE_INFO' in row:
+                            logging.debug('Now out of cable info table')
+                            isCableInfoData = False
+                        if isCableInfoData:
+                            cable_info.append(','.join(row))
+                        if 'START_CABLE_INFO' in row:
+                            logging.debug('Now in cable info table')
+                            isCableInfoData = True
+                        if 'END_TEMP_SENSING' in row:
+                            logging.debug('Now out of temp sensing table')
+                            isTempSensingData = False
+                        if isTempSensingData:
+                            temp_sensing.append(','.join(row))
+                        if 'START_TEMP_SENSING' in row:
+                            logging.debug('Now in temp sensing table')
+                            isTempSensingData = True
+                        if 'END_PM_INFO' in row:
+                            logging.debug('Now out of pm info table')
+                            isPmInfoData = False
+                        if isPmInfoData:
+                            pm_info.append(','.join(row))
+                        if 'START_PM_INFO' in row:
+                            logging.debug('Now in pm info table')
+                            isPmInfoData = True
+                        if 'END_LINKS' in row:
+                            logging.debug('Now out of link info table')
+                            isLinkInfo = False
+                        if isLinkInfo:
+                            link_info.append(','.join(row))
+                        if 'START_LINKS' in row:
+                            logging.debug('Now in link info table')
+                            isLinkInfo = True
+                        if 'END_FANS_SPEED' in row:
+                            logging.debug('Now out of fan info table')
+                            isFanInfo = False
+                        if isFanInfo:
+                            fan_info.append(','.join(row))
+                        if 'START_FANS_SPEED' in row:
+                            logging.debug('Now in fan info table')
+                            isFanInfo = True
+                        if 'END_POWER_SUPPLIES' in row:
+                            logging.debug('Now out of power info table')
+                            isPowerInfo = False
+                        if isPowerInfo:
+                            power_info.append(','.join(row))
+                        if 'START_POWER_SUPPLIES' in row:
+                            logging.debug('Now in fan info table')
+                            isPowerInfo = True
+                        if 'END_TEMPERATURE_SENSORS' in row:
+                            logging.debug('Now out of temperature info table')
+                            isTempInfo = False
+                        if isTempInfo:
+                            temp_info.append(','.join(row))
+                        if 'START_TEMPERATURE_SENSORS' in row:
+                            logging.debug('Now in temperature info table')
+                            isTempInfo = True
 
-        except Exception as e:
-            logging.critical(f"Error while reading the CSV file: {e}")
-            self.scrape_with_errors = True
+            except Exception as e:
+                logging.critical(f"Error while reading the CSV file: {e}")
+                self.scrape_with_errors = True
         return cable_info, pm_info, temp_sensing, link_info, fan_info, power_info, temp_info
 
     def data_filter(self, filter, info):
@@ -195,7 +201,10 @@ class InfinibandCollector(object):
         self.power_info_filtered, self.power_info_values, self.power_info_labels = self.data_filter("power_info_filter", self.power_info_raw)
         self.temp_info_filtered, self.temp_info_values, self.temp_info_labels = self.data_filter("temperature_sensors_filter", self.temp_info_raw)
 
-        self.info_merged = self.join_csv(self.cable_info_filtered, self.pm_info_filtered)
+        if self.phy:
+            self.info_merged = self.join_csv(self.cable_info_filtered, self.pm_info_filtered)
+        else :
+            self.info_merged = self.pm_info_filtered
 
         self.merged_info_labels = self.double_rm(self.cable_info_labels + self.pm_info_labels)
         self.merged_info_values = self.double_rm(self.cable_info_values + self.pm_info_values)
@@ -232,46 +241,53 @@ class InfinibandCollector(object):
                     rport = line['PortNum1']
         return rguid, rport
 
-    def __init__(self, node_name_map, csv_file_input, can_reset_counter):
+    def __init__(self, node_name_map, csv_file_input, can_reset_counter, phy, link_state, asic_temperature):
 
         self.can_reset_counter = can_reset_counter
         self.node_name_map = node_name_map
         self.csv_file_input = csv_file_input
+        self.phy = phy
+        self.link_state = link_state
+        self.asic_temperature = asic_temperature
         
         self.get_csv_value()
 
         self.scrape_with_errors = False
         self.metrics = {}
-        self.device_temp = {}
+        self.asic_temp = {}
         self.gauge = {}
-
-        self.device_temp['device_temperature'] = {
-            'help': 'Device current temperature'
-        }
-
-        self.link_info = {
-            'Link_State': {
-                'help': 'Link current state.',
+        
+        if self.asic_temperature:
+            self.asic_temp['asic_temperature'] = {
+                'help': 'Asic current temperature'
             }
-        }
 
-        self.power_info = {
-            'power_state': {
-                'help': 'Power current state.',
+        if self.link_state:
+            self.link_info = {
+                'Link_State': {
+                    'help': 'Link current state.',
+                }
             }
-        }
 
-        self.fan_info = {
-            'fan_speed':{
-                'help':'Fan current speed'
-            }
-        }
 
-        self.temp_info = {
-            'temp_info':{
-                'help':'Switch current temperatures'
+        if self.phy:
+            self.fan_info = {
+                'fan_speed':{
+                    'help':'Fan current speed'
+                }
             }
-        }
+
+            self.power_info = {
+                'power_state': {
+                    'help': 'Power current state.',
+                }
+            }
+
+            self.temp_info = {
+                'temp_info':{
+                    'help':'Switch current temperatures'
+                }
+            }
 
         self.link_info_regex = r'^(?P<LGuid>0x\w+)\s+\"\s*(?P<LName>[\w\-_ ]+)\"\s+\d+\s+(?P<LPort>\d+)\[\s+\]\s+\=+\(\s+.+(?P<State>Active|Down)\/\s*(?P<P_State>\w+)(?:.+(?P<RGuid>0x\w+)\s+\d+\s+(?P<RPort>\d+)\[\s+\]\s*\"\s*(?P<RName>[\w\-_ ]+).*|(?:()().*))$'
 
@@ -367,60 +383,63 @@ class InfinibandCollector(object):
                 labels = self.merged_info_labels
             )
 
-        for value in self.power_info:
-            self.metrics[value] =GaugeMetricFamily(
-                'infiniband_' + value.lower(),
-                self.power_info[value]['help'],
-                labels = [
-                    'NodeGuid',
-                    'PSUIndex',
-                    'NodeName'
-                ]
-            )
-        
-        for value in self.fan_info:
-            self.metrics[value] = GaugeMetricFamily(
-                'infiniband_' + value.lower(),
-                self.fan_info[value]['help'],
-                labels = [
-                    'NodeGuid',
-                    'FanIndex',
-                    'NodeName'
-                ]
-            )
-        
-        for value in self.device_temp:
-            self.metrics[value] = GaugeMetricFamily(
-                'infiniband_' + value.lower(),
-                self.device_temp[value]['help'],
-                labels = [
-                'NodeGuid',
-                'NodeName'
-                ]
-            )
+        if self.phy:
+            for value in self.power_info:
+                self.metrics[value] =GaugeMetricFamily(
+                    'infiniband_' + value.lower(),
+                    self.power_info[value]['help'],
+                    labels = [
+                        'NodeGuid',
+                        'PSUIndex',
+                        'NodeName'
+                    ]
+                )
 
-        for value in self.temp_info:
-            self.metrics[value] = GaugeMetricFamily(
-                'infiniband_' + value.lower(),
-                self.temp_info[value]['help'],
-                labels = self.temp_info_labels
-            )
+            for value in self.fan_info:
+                self.metrics[value] = GaugeMetricFamily(
+                    'infiniband_' + value.lower(),
+                    self.fan_info[value]['help'],
+                    labels = [
+                        'NodeGuid',
+                        'FanIndex',
+                        'NodeName'
+                    ]
+                )
 
-        for link_name in self.link_info:
-            self.metrics[link_name] = GaugeMetricFamily(
-                'infiniband_' + link_name.lower(),
-                self.link_info[link_name]['help'],
-                labels=[
-                    'NodeName',
+            for value in self.temp_info:
+                self.metrics[value] = GaugeMetricFamily(
+                    'infiniband_' + value.lower(),
+                    self.temp_info[value]['help'],
+                    labels = self.temp_info_labels
+                )
+
+        if self.asic_temperature:
+            for value in self.asic_temp:
+                self.metrics[value] = GaugeMetricFamily(
+                    'infiniband_' + value.lower(),
+                    self.asic_temp[value]['help'],
+                    labels = [
                     'NodeGuid',
-                    'PortNumber',
-                    'state',
-                    'physical_state',
-                    'RemoteGuid',
-                    'RemotePort',
-                    'RemoteName'
-                ]
-            )
+                    'NodeName'
+                    ]
+                )
+
+        if self.link_state:
+            for link_name in self.link_info:
+                self.metrics[link_name] = GaugeMetricFamily(
+                    'infiniband_' + link_name.lower(),
+                    self.link_info[link_name]['help'],
+                    labels=[
+                        'NodeName',
+                        'NodeGuid',
+                        'PortNumber',
+                        'state',
+                        'physical_state',
+                        'RemoteGuid',
+                        'RemotePort',
+                        'RemoteName'
+                    ]
+                )
 
     def chunks(self, x, n):
         for i in range(0, len(x), n):
@@ -493,7 +512,7 @@ class InfinibandCollector(object):
         for cable_info in self.info_merged :
             name = ""
             remotename = ""
-            remoteguid, remoteport = self.link_connexion(cable_info['nodeguid'], cable_info['portnum'])
+            remoteguid, remoteport = self.link_connexion(cable_info['nodeguid'], cable_info['portnumber'])
             cable_info['remoteport'] = f"{int(remoteport):02}"
             cable_info['portnumber'] = f"{int(cable_info['portnumber']):02}"
             cable_info['remoteguid'] = remoteguid
@@ -536,7 +555,7 @@ class InfinibandCollector(object):
             self.value_values = 0
             for label in self.temp_sensing_labels:
                 self.label_values.append(temp_info[label.lower()])
-            for value in self.device_temp:
+            for value in self.asic_temp:
                 label_values = self.label_values
                 try :
                     self.value_values = int(temp_info['currenttemperature'])
@@ -637,77 +656,83 @@ class InfinibandCollector(object):
 
         self.data_link()
         
-        self.temp_link()
+        if self.asic_temperature:
+            self.temp_link()
 
-        self.fan_link()
+        if self.phy:
 
-        self.power_link()
+            self.fan_link()
 
-        self.temp_sens_link()
+            self.power_link()
+
+            self.temp_sens_link()
 
         for value in self.gauge:
             yield self.metrics[value]
-
-        for value in self.device_temp:
-            yield self.metrics[value]
-
-        for value in self.fan_info:
-            yield self.metrics[value]
-
-        for value in self.power_info:
-            yield self.metrics[value]
-
-        for value in self.temp_info:
-            yield self.metrics[value]
         
-        iblinkinfo_stdout = ""
-        iblinkinfo_args = [
-            'iblinkinfo',
-            '--verbose',
-            '--line']
-        if self.node_name_map:
-            iblinkinfo_args.append('--node-name-map')
-            iblinkinfo_args.append(self.node_name_map)
-        process = subprocess.Popen(iblinkinfo_args,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        process_stdout, process_stderr = process.communicate()
-        iblinkinfo_stdout = process_stdout.decode("utf-8")
-        if process_stderr:
-            iblinkinfo_stderr = process_stderr.decode("utf-8")
+        if self.asic_temperature:        
+            for value in self.asic_temp:
+                yield self.metrics[value]
+
+        if self.phy:
+            for value in self.fan_info:
+                yield self.metrics[value]
+    
+            for value in self.power_info:
+                yield self.metrics[value]
+    
+            for value in self.temp_info:
+                yield self.metrics[value]
             
-            logging.warning("STDERR output retrieved from iblinkinfo:\n%s",
-                iblinkinfo_stderr)
-            self.scrape_with_errors = True
+        if self.link_state:
+            iblinkinfo_stdout = ""
+            iblinkinfo_args = [
+                'iblinkinfo',
+                '--verbose',
+                '--line']
+            if self.node_name_map:
+                iblinkinfo_args.append('--node-name-map')
+                iblinkinfo_args.append(self.node_name_map)
+            process = subprocess.Popen(iblinkinfo_args,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+            process_stdout, process_stderr = process.communicate()
+            iblinkinfo_stdout = process_stdout.decode("utf-8")
+            if process_stderr:
+                iblinkinfo_stderr = process_stderr.decode("utf-8")
 
-        content = re.split(self.link_info_regex,
-                           iblinkinfo_stdout,
-                           flags=re.MULTILINE)
-        try:
+                logging.warning("STDERR output retrieved from iblinkinfo:\n%s",
+                    iblinkinfo_stderr)
+                self.scrape_with_errors = True
 
-            if not content:
-                raise ParsingError('Input content is empty.')
+            content = re.split(self.link_info_regex,
+                               iblinkinfo_stdout,
+                               flags=re.MULTILINE)
+            try:
 
-            if not isinstance(content, list):
-                raise RuntimeError('Input content should be a list.')
+                if not content:
+                    raise ParsingError('Input content is empty.')
 
-            # Drop first line that is empty on successful regex split():
-            if content[0] == '':
-                del content[0]
-            else:
-                raise ParsingError('Inconsistent input content detected:\n{}'.format(content[0]))
+                if not isinstance(content, list):
+                    raise RuntimeError('Input content should be a list.')
 
-            input_data_chunks = self.chunks(content, 11)
+                # Drop first line that is empty on successful regex split():
+                if content[0] == '':
+                    del content[0]
+                else:
+                    raise ParsingError('Inconsistent input content detected:\n{}'.format(content[0]))
 
-            for data_chunk in input_data_chunks:
-                self.process_state(data_chunk)
+                input_data_chunks = self.chunks(content, 11)
 
-            for link_name in self.link_info:
-                yield self.metrics[link_name]
+                for data_chunk in input_data_chunks:
+                    self.process_state(data_chunk)
 
-        except ParsingError as e:
-            logging.error(e)
-            self.scrape_with_errors = True
+                for link_name in self.link_info:
+                    yield self.metrics[link_name]
+
+            except ParsingError as e:
+                logging.error(e)
+                self.scrape_with_errors = True
 
         scrape_duration.add_metric([], time.time() - scrape_start)
         yield scrape_duration
@@ -751,6 +776,21 @@ def main():
         dest='can_reset_counter',
         help='Will reset counter as required when maxed out.',
         action='store_true')
+    parser.add_argument(
+        '--phy',
+        dest='phy',
+        help='Will provided phy info such as fan, temperature sensors and power info.',
+        action='store_true')
+    parser.add_argument(
+        '--link_state',
+        dest='link_state',
+        help='Will provided link state info.',
+        action='store_true')
+    parser.add_argument(
+        '--asic_temp',
+        dest='asic_temp',
+        help='Will provided asic temperature info.',
+        action='store_true')
 
 
     args = parser.parse_args()
@@ -783,8 +823,29 @@ def main():
         logging.debug('Counters will not reset automatically')
         can_reset_counter = False
 
+    if args.phy:
+        logging.debug('phy provided in args')
+        phy = True
+    else:
+        logging.debug('Phy info will not be provided')
+        phy = False
 
-    app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map, csv_file_input=csv_file_input, can_reset_counter=can_reset_counter))
+    if args.link_state:
+        logging.debug('Link State provided in args')
+        link_state = True
+    else:
+        logging.debug('Link State info will not be provided')
+        link_state = False
+
+    if args.asic_temp:
+        logging.debug('Asic temp provided in args')
+        asic_temp = True
+    else:
+        logging.debug('asic temp info will not be provided')
+        asic_temp = False
+
+
+    app = make_wsgi_app(InfinibandCollector(node_name_map=node_name_map, csv_file_input=csv_file_input, can_reset_counter=can_reset_counter, phy=phy, link_state=link_state, asic_temperature=asic_temp))
     httpd = make_server('', args.port, app,
                         handler_class=NoLoggingWSGIRequestHandler)
     httpd.serve_forever()
