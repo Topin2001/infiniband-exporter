@@ -167,11 +167,9 @@ class InfinibandCollector(object):
                             continue
                     filter_row['nodename'] = ''
                     if self.node_name_map :
-                        with open(self.node_name_map, 'r') as file:
-                            datas = file.readlines()
-                            for data in datas:
-                                if filter_row['nodeguid'] in data:
-                                    filter_row['nodename'] = data.split(" ")[1].rstrip("\n")
+                        for data in self.datas:
+                            if filter_row['nodeguid'] in data:
+                                filter_row['nodename'] = data.split(" ")[1].rstrip("\n")
                     filtered_row.append(filter_row)
         except Exception as e:
             logging.error(f"Error while filtering the cable info: {e}")
@@ -249,11 +247,9 @@ class InfinibandCollector(object):
                     rguid = line['NodeGuid1']
                     rport = line['PortNum1']
         if self.node_name_map :
-            with open(self.node_name_map, 'r') as file:
-                datas = file.readlines()
-                for data in datas:
-                    if rguid in data:
-                        rname = data.split(" ")[1].rstrip("\n")
+            for data in self.datas:
+                if rguid in data:
+                    rname = data.split(" ")[1].rstrip("\n")
         return rguid, rport, rname
 
     def __init__(self, node_name_map, csv_file_input, can_reset_counter, phy, link_state, asic_temperature):
@@ -264,6 +260,10 @@ class InfinibandCollector(object):
         self.phy = phy
         self.link_state = link_state
         self.asic_temperature = asic_temperature
+
+        if self.node_name_map :
+            with open(self.node_name_map, 'r') as file:
+                self.datas = file.readlines()
         
         self.get_csv_value()
 
@@ -460,20 +460,17 @@ class InfinibandCollector(object):
         for i in range(0, len(x), n):
             yield x[i:i + n]
 
-    def reset_counter(self, guid, port, reason):
-        name = guid
+    def reset_counter(self, name, port, reason):
         if self.node_name_map :
-                with open(self.node_name_map, 'r') as file:
-                    datas = file.readlines()
-                    for data in datas:
-                        if guid in data:
-                            name = data.split(" ")[1].rstrip("\n")
+            for data in self.datas:
+                if name in data:
+                    name = data.split(" ")[1].rstrip("\n")
         if self.can_reset_counter:
             logging.info('Reseting counters on %s port %s, due to %s',  # noqa: E501
                          name,
                          port,
                          reason)
-            process = subprocess.Popen(['perfquery', '-R', '-G', guid, port],
+            process = subprocess.Popen(['perfquery', '-R', '-G', name, port],
                                        stdout=subprocess.PIPE)
             stdtout = process.communicate()
         else:
@@ -538,7 +535,7 @@ class InfinibandCollector(object):
                     self.value_values = int(cable_info[value.lower()].rstrip('c'))
                     if value in self.counter_info:
                         if self.value_values >= 2 ** (self.counter_info[value]['bits']-1):
-                            self.reset_counter(cable_info['nodeguid'], cable_info['portnum'], value)
+                            self.reset_counter(cable_info['nodeguid'], cable_info['portnumber'], value)
                 except ValueError:
                     logging.debug(f'The value {value} is not an int.')
 
