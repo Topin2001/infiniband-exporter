@@ -165,10 +165,16 @@ class InfinibandCollector(object):
                             logging.error(f'The key {key} was not recognise')
                             self.scrape_with_errors = True
                             continue
+                    filter_row['nodename'] = ''
+                    if self.node_name_map :
+                        for data in self.datas:
+                            if filter_row['nodeguid'] in data:
+                                filter_row['nodename'] = data.split(" ")[1].rstrip("\n")
                     filtered_row.append(filter_row)
         except Exception as e:
             logging.error(f"Error while filtering the cable info: {e}")
             self.scrape_with_errors = True
+
         return filtered_row, value, label
 
     def double_rm(self, myList):
@@ -230,6 +236,7 @@ class InfinibandCollector(object):
     def link_connexion(self, lguid, lport):
         rguid = ''
         rport = ''
+        rname = ''
         for line in csv.DictReader(self.link_info_raw, delimiter=','):
             if line['NodeGuid1'] == lguid and line['PortNum1'] == lport :
                 rguid = line['NodeGuid2']
@@ -239,7 +246,11 @@ class InfinibandCollector(object):
                 if line['NodeGuid2'] == lguid and line['PortNum2'] == lport :
                     rguid = line['NodeGuid1']
                     rport = line['PortNum1']
-        return rguid, rport
+        if self.node_name_map :
+            for data in self.datas:
+                if rguid in data:
+                    rname = data.split(" ")[1].rstrip("\n")
+        return rguid, rport, rname
 
     def __init__(self, node_name_map, csv_file_input, can_reset_counter, phy, link_state, asic_temperature):
 
@@ -249,6 +260,10 @@ class InfinibandCollector(object):
         self.phy = phy
         self.link_state = link_state
         self.asic_temperature = asic_temperature
+
+        if self.node_name_map :
+            with open(self.node_name_map, 'r') as file:
+                self.datas = file.readlines()
         
         self.get_csv_value()
 
@@ -445,20 +460,17 @@ class InfinibandCollector(object):
         for i in range(0, len(x), n):
             yield x[i:i + n]
 
-    def reset_counter(self, guid, port, reason):
-        name = guid
+    def reset_counter(self, name, port, reason):
         if self.node_name_map :
-                with open(self.node_name_map, 'r') as file:
-                    datas = file.readlines()
-                    for data in datas:
-                        if guid in data:
-                            name = data.split(" ")[1].rstrip("\n")
+            for data in self.datas:
+                if name in data:
+                    name = data.split(" ")[1].rstrip("\n")
         if self.can_reset_counter:
             logging.info('Reseting counters on %s port %s, due to %s',  # noqa: E501
                          name,
                          port,
                          reason)
-            process = subprocess.Popen(['perfquery', '-R', '-G', guid, port],
+            process = subprocess.Popen(['perfquery', '-R', '-G', name, port],
                                        stdout=subprocess.PIPE)
             stdtout = process.communicate()
         else:
@@ -508,23 +520,11 @@ class InfinibandCollector(object):
         self.parse_state(item)
 
     def data_link(self):
-
         for cable_info in self.info_merged :
-            name = ""
-            remotename = ""
-            remoteguid, remoteport = self.link_connexion(cable_info['nodeguid'], cable_info['portnumber'])
+            remoteguid, remoteport, remotename = self.link_connexion(cable_info['nodeguid'], cable_info['portnumber'])
             cable_info['remoteport'] = f"{int(remoteport):02}"
             cable_info['portnumber'] = f"{int(cable_info['portnumber']):02}"
             cable_info['remoteguid'] = remoteguid
-            if self.node_name_map :
-                with open(self.node_name_map, 'r') as file:
-                    datas = file.readlines()
-                    for data in datas:
-                        if cable_info['nodeguid'] in data:
-                            name = data.split(" ")[1].rstrip("\n")
-                        if cable_info['remoteguid'] in data and cable_info['remoteguid'] != "":
-                            remotename = data.split(" ")[1].rstrip("\n")
-            cable_info['nodename'] = name
             cable_info['remotename'] = remotename
             self.label_values = []
             self.value_values = 0
@@ -535,7 +535,7 @@ class InfinibandCollector(object):
                     self.value_values = int(cable_info[value.lower()].rstrip('c'))
                     if value in self.counter_info:
                         if self.value_values >= 2 ** (self.counter_info[value]['bits']-1):
-                            self.reset_counter(cable_info['nodeguid'], cable_info['portnum'], value)
+                            self.reset_counter(cable_info['nodeguid'], cable_info['portnumber'], value)
                 except ValueError:
                     logging.debug(f'The value {value} is not an int.')
 
@@ -543,14 +543,7 @@ class InfinibandCollector(object):
 
     def temp_link(self):
         for temp_info in self.temp_sensing_filtered :
-            name = ""
-            if self.node_name_map :
-                with open(self.node_name_map, 'r') as file:
-                    datas = file.readlines()
-                    for data in datas:
-                        if temp_info['nodeguid'] in data:
-                            name = data.split(" ")[1].rstrip("\n")
-            temp_info['nodename'] = name
+
             self.label_values = []
             self.value_values = 0
             for label in self.temp_sensing_labels:
@@ -566,15 +559,7 @@ class InfinibandCollector(object):
 
     def fan_link(self):
         for fan_info in self.fan_info_filtered :
-            name = ""
             fan_info['sensorindex'] = f"{int(fan_info['sensorindex']):02}"
-            if self.node_name_map :
-                with open(self.node_name_map, 'r') as file:
-                    datas = file.readlines()
-                    for data in datas:
-                        if fan_info['nodeguid'] in data:
-                            name = data.split(" ")[1].rstrip("\n")
-            fan_info['nodename'] = name
             self.label_values = []
             self.value_values = 0
             for label in self.fan_info_labels:
@@ -590,15 +575,7 @@ class InfinibandCollector(object):
 
     def power_link(self):
         for power_info in self.power_info_filtered :
-            name = ""
             power_info['psuindex'] = f"{int(power_info['psuindex']):02}"
-            if self.node_name_map :
-                with open(self.node_name_map, 'r') as file:
-                    datas = file.readlines()
-                    for data in datas:
-                        if power_info['nodeguid'] in data:
-                            name = data.split(" ")[1].rstrip("\n")
-            power_info['nodename'] = name
             self.label_values = []
             self.value_values = 0
             for label in self.power_info_labels:
@@ -614,14 +591,6 @@ class InfinibandCollector(object):
 
     def temp_sens_link(self):
         for temp_info in self.temp_info_filtered :
-            name = ""
-            if self.node_name_map :
-                with open(self.node_name_map, 'r') as file:
-                    datas = file.readlines()
-                    for data in datas:
-                        if temp_info['nodeguid'] in data:
-                            name = data.split(" ")[1].rstrip("\n")
-            temp_info['nodename'] = name
             self.label_values = []
             self.value_values = 0
             for label in self.temp_info_labels:
