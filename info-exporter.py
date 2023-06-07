@@ -120,7 +120,7 @@ class InfinibandCollector(object):
         label = []
         value = []
         try:
-            with open('request.json') as f:
+            with open('/home/tgalpin/running/info-exporter/request.json') as f:
                 filters = json.load(f)[filter]
                 if filter == "cable_info_filters" and 'NodeGuid' not in filters:
                     filters['NodeGuid'] = 'label'
