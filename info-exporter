@@ -399,7 +399,6 @@ class InfinibandCollector(object):
         }
 
     def init_metrics(self):
-        print(self.merged_info_labels)
         for value in self.gauge:
             self.metrics[value] = GaugeMetricFamily(
                 'infiniband_' + value.lower(),
