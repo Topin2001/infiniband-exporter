@@ -2,7 +2,8 @@
     "cable_info_filters": {
         "NodeGuid": "label",
         "PortNum" : "label",
-        "Temperature": "value"
+        "Temperature": "value",
+        "Vendor": "value"
     },
     "pm_info_filters" : {
         "NodeGUID" : "label",

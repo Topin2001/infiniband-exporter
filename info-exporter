@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import csv
 import logging
 import argparse
@@ -124,6 +125,8 @@ class InfinibandCollector(object):
                 filters = json.load(f)[filter]
                 if filter == "cable_info_filters" and 'NodeGuid' not in filters:
                     filters['NodeGuid'] = 'label'
+                if filter == "cable_info_filters" and 'Vendor' not in filters:
+                    filters['Vendor'] = 'value'
                 if filter == "cable_info_filters" and 'PortNum' not in filters:
                     filters['PortNum'] = 'label'
                 if filter == "pm_info_filters" and 'NodeGUID' not in filters:
@@ -304,6 +307,12 @@ class InfinibandCollector(object):
                 }
             }
 
+            self.transceiver_state = {
+                'transceiver_state':{
+                    'help':'Transceiver current state (1 if all good, 0 otherwise)'
+                }
+            }
+
         self.link_info_regex = r'^(?P<LGuid>0x\w+)\s+\"\s*(?P<LName>[\w\-_ ]+)\"\s+\d+\s+(?P<LPort>\d+)\[\s+\]\s+\=+\(\s+.+(?P<State>Active|Down)\/\s*(?P<P_State>\w+)(?:.+(?P<RGuid>0x\w+)\s+\d+\s+(?P<RPort>\d+)\[\s+\]\s*\"\s*(?P<RName>[\w\-_ ]+).*|(?:()().*))$'
 
         for value in self.merged_info_values :
@@ -390,7 +399,7 @@ class InfinibandCollector(object):
         }
 
     def init_metrics(self):
-
+        print(self.merged_info_labels)
         for value in self.gauge:
             self.metrics[value] = GaugeMetricFamily(
                 'infiniband_' + value.lower(),
@@ -426,6 +435,13 @@ class InfinibandCollector(object):
                     'infiniband_' + value.lower(),
                     self.temp_info[value]['help'],
                     labels = self.temp_info_labels
+                )
+            
+            for value in self.transceiver_state:
+                self.metrics[value] = GaugeMetricFamily(
+                    'infiniband_' + value.lower(),
+                    self.transceiver_state[value]['help'],
+                    labels = self.merged_info_labels
                 )
 
         if self.asic_temperature:
@@ -531,19 +547,22 @@ class InfinibandCollector(object):
             for label in self.merged_info_labels:
                 self.label_values.append(cable_info[label.lower()])
             for value in self.gauge:
-                try :
-                    self.value_values = int(cable_info[value.lower()].rstrip('c'))
-                    if value in self.counter_info:
-                        if self.value_values >= 2 ** (self.counter_info[value]['bits']-1):
-                            self.reset_counter(cable_info['nodeguid'], cable_info['portnumber'], value)
-                except ValueError:
-                    logging.debug(f'The value {value} is not an int.')
+                if value == "Vendor":
+                    self.value_values = 0 if cable_info[value.lower()] == "" else 1
+                    self.metrics["transceiver_state"].add_metric(self.label_values, self.value_values)
+                else :
+                    try :
+                        self.value_values = int(cable_info[value.lower()].rstrip('c'))
+                        if value in self.counter_info:
+                            if self.value_values >= 2 ** (self.counter_info[value]['bits']-1):
+                                self.reset_counter(cable_info['nodeguid'], cable_info['portnumber'], value)
+                    except ValueError:
+                        logging.debug(f'The value {value} is not an int.')
 
-                self.metrics[value].add_metric(self.label_values, self.value_values)
+                    self.metrics[value].add_metric(self.label_values, self.value_values)
 
     def temp_link(self):
         for temp_info in self.temp_sensing_filtered :
-
             self.label_values = []
             self.value_values = 0
             for label in self.temp_sensing_labels:
@@ -637,7 +656,10 @@ class InfinibandCollector(object):
             self.temp_sens_link()
 
         for value in self.gauge:
-            yield self.metrics[value]
+            if value == "Vendor":
+                yield self.metrics["transceiver_state"]
+            else :
+                yield self.metrics[value]
         
         if self.asic_temperature:        
             for value in self.asic_temp:
