@@ -1,0 +1,10 @@
+[Unit]
+Description=run the quickest infiniband-exporter to be export each 15 sec
+
+[Service]
+ExecStart=/usr/bin/python3 /home/tgalpin/running/info-exporter/info-exporter.py --port 9686 --node-name-map /home/tgalpin/running/info-exporter/guid_2_name.txt --can-reset-counter
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
