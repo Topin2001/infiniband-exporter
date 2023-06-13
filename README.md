@@ -2,8 +2,8 @@
 
 ## Update your node-name-map :
 
-Use the guid-to-name.y script to generate the guid_2_name.txt file with can be read by the exporter.
-It take 2 argument :
+Use the name_map_gen script to generate the guid_2_name.txt file with can be read by the exporter.
+It take 3 mandatory arguments :
 1. The guid - switch link file (sw-node-name-map.txt by default)
 2. The verbose level (none or full)
 

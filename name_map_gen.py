@@ -7,6 +7,8 @@ import dataclasses
 import argparse
 import subprocess
 import shlex
+import tempfile
+import os
 
 class Device_type (enum.Enum):
 	LEAF_SWITCH = 0
@@ -173,8 +175,8 @@ class DC_parser:
 
 
 
-def match_leaf_switch_name(switch_list, dc_devs):
-	with open('sw_name_map.txt', 'w+') as f:
+def match_leaf_switch_name(switch_list, dc_devs, output_file):
+	with open(output_file, 'w+') as f:
 		for switch in switch_list:
 			device = next((x for x in dc_devs.device_type_dict[Device_type.EB_SERVER] if switch.host_ports[0].remote_host.lower() == x.name.lower() ))
 			switch_dev=next((x for x in dc_devs.device_rack_unit_dict[device.container, device.rack] if x.device_type == Device_type.LEAF_SWITCH))
@@ -183,22 +185,22 @@ def match_leaf_switch_name(switch_list, dc_devs):
 
 
 
-def match_spine_switch_name(leaf_switch, dc_devs):
+def match_spine_switch_name(leaf_switch, dc_devs, output_file):
 	guid_list = [elem.remote_guid for elem in sorted(leaf_switch.switch_ports, key = lambda a : a.local_port)][::2]
 	names_list = sorted([sw.name for sw in dc_devs.device_type_dict[Device_type.SPINE_SWITCH]])
-	with open('sw_name_map.txt', 'a+') as f:
+	with open(output_file, 'a+') as f:
 		for guid, name in zip(guid_list,names_list):
 			f.write(f'0x{guid} {name}\n')
 		f.close()
 
-def match_severs_name():
+def match_severs_name(output_file):
 	guid_parse_regex = r'^.*(0x\w+).+\"(.+) (.+)\"$'
 
 	cmd = f'ibhosts'
 	cmd_output = subprocess.check_output(shlex.split(cmd))
 	lines = cmd_output.decode().split("\n")
 	del lines[-1]
-	with open('node_name_map.txt', 'a+') as f:
+	with open(output_file, 'a+') as f:
 		for line in lines :
 			parsed_guid_name = re.split(guid_parse_regex, line)
 			if parsed_guid_name[3] == 'Node':
@@ -207,25 +209,57 @@ def match_severs_name():
 	f.close()
 		
 
-def main(net_discover_file, csv_files):
-	switch_parser = Switch_parser(net_discover_file)
+def main():
+	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+	parser.add_argument(
+		'--net_dis_file',
+		'-n',
+		required=False,
+		default='0',
+		type=str,
+		help='The net_dis file name, generated with ouput from ibnetdiscover, if not set, generate it while running')
+	parser.add_argument(
+		'--csv_files',
+		'-c',
+		required=True,
+		nargs='+',
+		help='Path to the CSV files with the container number attached. Ex: <path/to/the/csv/file>:<container_number>')
+	parser.add_argument(
+		'--output_file',
+		'-o',
+		required=False,
+		default='node_name_map.cfg',
+		type=str,
+		help='Path to the required output file'
+	)
+	args = parser.parse_args()
+	tmp_gen = False
+	if args.net_dis_file == '0':
+		cmd_output = subprocess.check_output(shlex.split('ibnetdiscover'))
+		with tempfile.NamedTemporaryFile(delete=False, prefix='net_dis') as temp_file:
+			tmp_gen = True
+			temp_file.write(cmd_output)
+			temp_file_path = temp_file.name
+			args.net_dis_file = temp_file_path
+		
+
+	switch_parser = Switch_parser(args.net_dis_file)
+	if tmp_gen:
+		os.remove(temp_file_path)
 	switch_parser.parse()
 
 	dc_parser = DC_parser()
 
-	for csv_file_path in csv_files:
+	for csv_file_path in args.csv_files:
 		csv_file, container = csv_file_path.split(':')
 		dc_parser.parse_container(csv_file, int(container))
 
-	match_leaf_switch_name(switch_parser.leaf_switches,dc_parser)
-	match_spine_switch_name(switch_parser.leaf_switches[0],dc_parser)
-	match_severs_name()
-
+	try :
+		match_leaf_switch_name(switch_parser.leaf_switches, dc_parser, args.output_file)
+	except StopIteration:
+		print(f'Hit StopIteration, not all device are on the csv file(s)')
+	match_spine_switch_name(switch_parser.leaf_switches[0], dc_parser, args.output_file)
+	match_severs_name(args.output_file)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('net_dis_file', help='Path to the net_dis.txt file')
-    parser.add_argument('csv_files', nargs='+', help='Path to the CSV files and the container number')
-    args = parser.parse_args()
-
-    main(args.net_dis_file, args.csv_files)
+    main()
