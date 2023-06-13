@@ -1,11 +1,12 @@
+#!/usr/bin/python
 import re
 import csv
 import collections
-import functools
 import enum
 import dataclasses
 import argparse
-import pandas as pd
+import subprocess
+import shlex
 
 class Device_type (enum.Enum):
 	LEAF_SWITCH = 0
@@ -20,25 +21,25 @@ class Device_type (enum.Enum):
 	JBOD_ENCLOSURE = 9
 	UNKNOWN = 10
 
-@dataclasses.dataclass(kw_only=True)
+@dataclasses.dataclass
 class Rack_device:
 	rack: int = 0
 	container: int = 0
 	name: str = ''
-	device_type: Device_type 
+	device_type: Device_type  = Device_type.UNKNOWN
 #device_type: Device_type = dataclass.field(init=False)
 
 #	def __post_init__(self):
 
 
-@dataclasses.dataclass(kw_only=True)
+@dataclasses.dataclass
 class Port:
 	remote_guid: str = ''
 	remote_host: str = ''
 	remote_port: int = 0
 	local_port: int = 0
 
-@dataclasses.dataclass(kw_only=True)
+@dataclasses.dataclass
 class Switch:
 	guid: str = ''
 	radix: int = 0
@@ -173,41 +174,58 @@ class DC_parser:
 
 
 def match_leaf_switch_name(switch_list, dc_devs):
-	for switch in switch_list:
-		device = next((x for x in dc_devs.device_type_dict[Device_type.EB_SERVER] if switch.host_ports[0].remote_host.lower() == x.name.lower() ))
-		
-
-		switch_dev=next((x for x in dc_devs.device_rack_unit_dict[device.container, device.rack] if x.device_type == Device_type.LEAF_SWITCH))
-		print(f'0x{switch.guid}', switch_dev.name)
+	with open('sw_name_map.txt', 'w+') as f:
+		for switch in switch_list:
+			device = next((x for x in dc_devs.device_type_dict[Device_type.EB_SERVER] if switch.host_ports[0].remote_host.lower() == x.name.lower() ))
+			switch_dev=next((x for x in dc_devs.device_rack_unit_dict[device.container, device.rack] if x.device_type == Device_type.LEAF_SWITCH))
+			f.write(f'0x{switch.guid} {switch_dev.name}\n')
+	f.close()
 
 
 
 def match_spine_switch_name(leaf_switch, dc_devs):
 	guid_list = [elem.remote_guid for elem in sorted(leaf_switch.switch_ports, key = lambda a : a.local_port)][::2]
 	names_list = sorted([sw.name for sw in dc_devs.device_type_dict[Device_type.SPINE_SWITCH]])
-	for guid, name in zip(guid_list,names_list):
-		print(f'0x{guid}', name)
+	with open('sw_name_map.txt', 'a+') as f:
+		for guid, name in zip(guid_list,names_list):
+			f.write(f'0x{guid} {name}\n')
+		f.close()
+
+def match_severs_name():
+	guid_parse_regex = r'^.*(0x\w+).+\"(.+) (.+)\"$'
+
+	cmd = f'ibhosts'
+	cmd_output = subprocess.check_output(shlex.split(cmd))
+	lines = cmd_output.decode().split("\n")
+	del lines[-1]
+	with open('node_name_map.txt', 'a+') as f:
+		for line in lines :
+			parsed_guid_name = re.split(guid_parse_regex, line)
+			if parsed_guid_name[3] == 'Node':
+				continue
+			f.write(f'{parsed_guid_name[1]} {parsed_guid_name[2] + "_" + parsed_guid_name[3]}\n')
+	f.close()
 		
 
+def main(net_discover_file, csv_files):
+	switch_parser = Switch_parser(net_discover_file)
+	switch_parser.parse()
 
-#TODO @tgalpin write a proper main :)
-def main():
-	pippo = Switch_parser('net_dis.txt')
-	pippo.parse()
+	dc_parser = DC_parser()
 
-	pappo = DC_parser()
+	for csv_file_path in csv_files:
+		csv_file, container = csv_file_path.split(':')
+		dc_parser.parse_container(csv_file, int(container))
 
-	pappo.parse_container('/home/flavio/Downloads/LHCb data center - IT4 40P-200G-3 Tell40(1).csv',4)
-	pappo.parse_container('/home/flavio/Downloads/LHCb data center - IT3 40P-200G-3 Tell40(1).csv',3)
-
-# print(pappo.devices_list)
-# print(pappo.device_type_dict[Device_type.LEAF_SWITCH])
-# print(pappo.device_rack_unit_dict)
-
-	match_leaf_switch_name(pippo.leaf_switches,pappo)
-	match_spine_switch_name(pippo.leaf_switches[0],pappo)
-
+	match_leaf_switch_name(switch_parser.leaf_switches,dc_parser)
+	match_spine_switch_name(switch_parser.leaf_switches[0],dc_parser)
+	match_severs_name()
 
 
 if __name__ == '__main__':
-	main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('net_dis_file', help='Path to the net_dis.txt file')
+    parser.add_argument('csv_files', nargs='+', help='Path to the CSV files and the container number')
+    args = parser.parse_args()
+
+    main(args.net_dis_file, args.csv_files)
