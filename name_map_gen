@@ -258,7 +258,10 @@ def main():
 		match_leaf_switch_name(switch_parser.leaf_switches, dc_parser, args.output_file)
 	except StopIteration:
 		print(f'Hit StopIteration, not all device are on the csv file(s)')
-	match_spine_switch_name(switch_parser.leaf_switches[0], dc_parser, args.output_file)
+	try:
+		match_spine_switch_name(switch_parser.leaf_switches[0], dc_parser, args.output_file)
+	except StopIteration:
+		print(f'Hit StopIteration, not all device are on the csv file(s)')
 	match_severs_name(args.output_file)
 
 if __name__ == '__main__':
