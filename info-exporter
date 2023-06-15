@@ -781,9 +781,33 @@ def main():
         dest='asic_temp',
         help='Will provided asic temperature info.',
         action='store_true')
-
+    parser.add_argument(
+        '--config',
+        '-c',
+        required=False,
+        type=str,
+        help='Path to the config file.')
 
     args = parser.parse_args()
+
+    if args.config:
+        with open(args.config) as config_file:
+            config_data = json.load(config_file)
+
+        if "verbose" in config_data and not args.verbose:
+            args.verbose = config_data["verbose"]
+        if "port" in config_data and not args.port:
+            args.port = config_data["port"]
+        if "node_name_map" in config_data and not args.node_name_map:
+            args.node_name_map = config_data["node_name_map"]
+        if "can_reset_counter" in config_data and not args.can_reset_counter:
+            args.can_reset_counter = config_data["can_reset_counter"]
+        if "phy" in config_data and not args.phy:
+            args.phy = config_data["phy"]
+        if "link_state" in config_data and not args.link_state:
+            args.link_state = config_data["link_state"]
+        if "asic_temp" in config_data and not args.asic_temp:
+            args.asic_temp = config_data["asic_temp"]      
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG,

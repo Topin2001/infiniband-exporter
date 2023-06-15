@@ -1,0 +1,10 @@
+{
+    "verbose": false,
+    "port": 9686,
+    "node_name_map": "/etc/info-exporter/node_name_map.cfg",
+    "can_reset_counter": true,
+    "phy": false,
+    "link_state": false,
+    "asic_temp": false
+  }
+  

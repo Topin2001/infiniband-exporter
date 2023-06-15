@@ -2,7 +2,7 @@
 Description=run the quickest infiniband-exporter to be export each 15 sec
 
 [Service]
-ExecStart=/usr/bin/info-exporter --node-name-map /etc/info-exporter/node_name_map.cfg --port 9686  --can-reset-counter
+ExecStart=/usr/bin/info-exporter --config /etc/info-exporter/config-15s.json
 Restart=always
 RestartSec=5s
 
