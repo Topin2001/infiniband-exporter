@@ -754,7 +754,7 @@ def main():
     parser.add_argument(
         '--port',
         type=int,
-        default=9685,
+        default=0,
         help='Collector http port, default is 9685')
     parser.add_argument(
         '--node-name-map',
@@ -796,7 +796,7 @@ def main():
 
         if "verbose" in config_data and not args.verbose:
             args.verbose = config_data["verbose"]
-        if "port" in config_data and not args.port:
+        if "port" in config_data and args.port == 0:
             args.port = config_data["port"]
         if "node_name_map" in config_data and not args.node_name_map:
             args.node_name_map = config_data["node_name_map"]
@@ -808,6 +808,9 @@ def main():
             args.link_state = config_data["link_state"]
         if "asic_temp" in config_data and not args.asic_temp:
             args.asic_temp = config_data["asic_temp"]      
+
+    if args.port ==0:
+        args.port = 9685
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG,
