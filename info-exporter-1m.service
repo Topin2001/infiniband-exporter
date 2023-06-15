@@ -2,7 +2,7 @@
 Description=run the basic infiniband-exporter to be export each minute
 
 [Service]
-ExecStart=/usr/bin/python3 /home/tgalpin/running/info-exporter/info-exporter.py --phy --link_state --asic_temp --node-name-map /home/tgalpin/running/info-exporter/guid_2_name.txt
+ExecStart=/usr/bin/info-exporter.py --phy --link_state --asic_temp --node-name-map /etc/info-exporter/node_name_map.cfg
 Restart=always
 RestartSec=5s
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import csv
 import logging
 import argparse
@@ -121,7 +121,7 @@ class InfinibandCollector(object):
         label = []
         value = []
         try:
-            with open('/home/tgalpin/running/info-exporter/request.json') as f:
+            with open('/etc/info-exporter/request.json') as f:
                 filters = json.load(f)[filter]
                 if filter == "cable_info_filters" and 'NodeGuid' not in filters:
                     filters['NodeGuid'] = 'label'
