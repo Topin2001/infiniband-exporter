@@ -31,13 +31,11 @@ tar -xf %{name}-%{version}.tar.gz
 %install
 mkdir -p %{buildroot}/usr/bin
 install -m 755 %{_builddir}/%{name}-%{version}/info-exporter %{buildroot}/usr/bin/info-exporter
+install -m 755 %{_builddir}/%{name}-%{version}/name_map_gen %{buildroot}/usr/bin/name_map_gen
 
 mkdir -p %{buildroot}/etc/systemd/system
 install -m 644 %{_builddir}/%{name}-%{version}/info-exporter-60s.service %{buildroot}/etc/systemd/system/info-exporter-60s.service
 install -m 644 %{_builddir}/%{name}-%{version}/info-exporter-15s.service %{buildroot}/etc/systemd/system/info-exporter-15s.service
-
-mkdir -p %{buildroot}/usr/bin
-install -m 755 %{_builddir}/%{name}-%{version}/name_map_gen %{buildroot}/usr/bin/name_map_gen
 
 mkdir -p %{buildroot}/usr/share/doc/%{name}
 install -m 644 %{_builddir}/%{name}-%{version}/README.md %{buildroot}/usr/share/doc/%{name}/README.md
