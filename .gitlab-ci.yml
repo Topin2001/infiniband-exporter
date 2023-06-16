@@ -7,8 +7,6 @@ build:
   before_script:
     - dnf install -y rpm-build python3-devel tree
   script:
-    - pwd
-    - ls
     - mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
     - cp info-exporter.spec rpmbuild/SPECS/
     - mkdir info-exporter-build
@@ -21,8 +19,9 @@ build:
     - cp README.md info-exporter-build/
     - cp request.json info-exporter-build/
     - tar --create --file rpmbuild/SOURCES/info-exporter-0.1.0.tar.gz info-exporter-build
+    - cd rpmbuild
     - tree
-    - rpmbuild --target noarch -bb rpmbuild/SPECS/info-exporter.spec
+    - rpmbuild --target noarch -bb SPECS/info-exporter.spec
   artifacts:
     paths:
       - rpmbuild/RPMS/noarch/*.rpm
