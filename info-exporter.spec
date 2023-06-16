@@ -8,7 +8,7 @@ License:        CERN
 URL:            https://gitlab.cern.ch/tgalpin/cables-info-exporter
 Source0:        %{name}-%{version}.tar.gz
 
-BuildRequires:  python3-devel
+BuildRequires:  python3-devel >= 3.9.16
 Requires:       bash
 Requires:       python3 
 Requires:       infiniband-diags >= 41.0
