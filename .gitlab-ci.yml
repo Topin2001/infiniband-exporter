@@ -19,7 +19,7 @@ build:
     - cp README.md info-exporter-build/
     - cp request.json info-exporter-build/
     - tar --create --file rpmbuild/SOURCES/info-exporter-0.1.0.tar.gz -C info-exporter-build .
-    - rpmbuild --define "_topdir /builds/tgalpin/cables-info-exporter/rpmbuild"  --root /builds/tgalpin/cables-info-exporter --target noarch -bb rpmbuild/SPECS/info-exporter.spec
+    - rpmbuild --define "_topdir `pwd`"  --root /builds/tgalpin/cables-info-exporter --target noarch -bb rpmbuild/SPECS/info-exporter.spec
   artifacts:
     paths:
       - rpmbuild/RPMS/noarch/*.rpm
