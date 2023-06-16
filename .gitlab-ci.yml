@@ -6,7 +6,6 @@ build:
   image: cern/alma9-base:latest
   before_script:
     - yum install -y rpm-build python3 python3-devel
-    - pip3 install python3-devel
   script:
     - mkdir -p {SOURCES,SPECS,BUILD,RPMS,SRPMS}
     - cp info-exporter.spec SPECS/
