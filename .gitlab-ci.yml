@@ -6,10 +6,10 @@ build:
   image: cern/alma9-base:latest
   before_script:
     - yum install -y rpm-build python3 python3-devel
+    - pip3 install python3-devel
   script:
-    - yum install -y python3-devel
-    - mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
-    - cp info-exporter.spec rpmbuild/SPECS/
+    - mkdir -p {SOURCES,SPECS,BUILD,RPMS,SRPMS}
+    - cp info-exporter.spec SPECS/
     - mkdir info-exporter-build
     - cp info-exporter info-exporter-build/
     - cp info-exporter-15s.service info-exporter-build/
@@ -19,7 +19,7 @@ build:
     - cp name_map_gen info-exporter-build/
     - cp README.md info-exporter-build/
     - cp request.json info-exporter-build/
-    - tar --create --file rpmbuild/SOURCES/info-exporter-0.1.0.tar.gz -C info-exporter-build .
+    - tar --create --file SOURCES/info-exporter-0.1.0.tar.gz -C info-exporter-build .
     - rpmbuild --define "_topdir /builds/tgalpin/cables-info-exporter"  --root /builds/tgalpin/cables-info-exporter --target noarch -bb rpmbuild/SPECS/info-exporter.spec
   artifacts:
     paths:
