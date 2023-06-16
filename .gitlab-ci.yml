@@ -7,6 +7,8 @@ build:
   before_script:
     - dnf install -y rpm-build python3-devel
   script:
+    - pwd
+    - ls
     - mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
     - cp info-exporter.spec rpmbuild/SPECS/
     - mkdir info-exporter-build
