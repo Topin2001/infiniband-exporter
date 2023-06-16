@@ -18,7 +18,8 @@ Requires:       ibutils2 >= 2.1.1
 A python scraper, which get information from opensm tools, format those and make those accessible by prometheus, on a local webpage.
 
 %prep
-%setup
+cd BUILD
+gzip -dc ../SOURCES/%{Source0} | tar -xvvf 
 
 
 %install
