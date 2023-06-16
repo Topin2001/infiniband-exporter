@@ -7,19 +7,19 @@ build:
   before_script:
     - dnf install -y rpm-build python3-devel
   script:
-    - mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
-    - cp info-exporter.spec rpmbuild/SPECS/
-    - mkdir info-exporter-build
-    - cp info-exporter info-exporter-build/
-    - cp info-exporter-15s.service info-exporter-build/
-    - cp info-exporter-60s.service info-exporter-build/
-    - cp config-15s.json info-exporter-build/
-    - cp config-60s.json info-exporter-build/
-    - cp name_map_gen info-exporter-build/
-    - cp README.md info-exporter-build/
-    - cp request.json info-exporter-build/
-    - tar --create --file rpmbuild/SOURCES/info-exporter-0.1.0.tar.gz info-exporter-build
-    - rpmbuild --root / --target noarch -bb rpmbuild/SPECS/info-exporter.spec
+    - mkdir -p /root/rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
+    - cp info-exporter.spec /root/rpmbuild/SPECS/
+    - mkdir /root/info-exporter-build
+    - cp info-exporter /root/info-exporter-build/
+    - cp info-exporter-15s.service /root/info-exporter-build/
+    - cp info-exporter-60s.service /root/info-exporter-build/
+    - cp config-15s.json /root/info-exporter-build/
+    - cp config-60s.json /root/info-exporter-build/
+    - cp name_map_gen /root/info-exporter-build/
+    - cp README.md /root/info-exporter-build/
+    - cp request.json /root/info-exporter-build/
+    - tar --create --file /root/rpmbuild/SOURCES/info-exporter-0.1.0.tar.gz info-exporter-build
+    - rpmbuild --target noarch -bb /root/rpmbuild/SPECS/info-exporter.spec
   artifacts:
     paths:
       - rpmbuild/RPMS/noarch/*.rpm
