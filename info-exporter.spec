@@ -48,14 +48,14 @@ install -m 644 %{_builddir}/%{name}-%{version}/config-15s.json %{buildroot}/etc/
 install -m 644 %{_builddir}/%{name}-%{version}/config-60s.json %{buildroot}/etc/%{name}/config-60s.json
 
 %files
-/usr/bin/info-exporter
-/etc/systemd/system/info-exporter-60s.service
-/etc/systemd/system/info-exporter-15s.service
-/usr/bin/name_map_gen
-/usr/share/doc/%{name}/README.md
-/etc/%{name}/request.json
-/etc/%{name}/config-15s.json
-/etc/%{name}/config-60s.json
+usr/bin/info-exporter
+etc/systemd/system/info-exporter-60s.service
+etc/systemd/system/info-exporter-15s.service
+usr/bin/name_map_gen
+usr/share/doc/%{name}/README.md
+etc/%{name}/request.json
+etc/%{name}/config-15s.json
+etc/%{name}/config-60s.json
 
 
 
