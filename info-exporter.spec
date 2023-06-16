@@ -17,8 +17,6 @@ Requires:       ibutils2 >= 2.1.1
 %description
 A python scraper, which get information from opensm tools, format those and make those accessible by prometheus, on a local webpage.
 
-%_topdir /builds/tgalpin/cables-info-exporter/rpmbuild
-
 %prep
 %autosetup
 
