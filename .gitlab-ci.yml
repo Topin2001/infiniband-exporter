@@ -1,0 +1,16 @@
+stages:
+  - build
+
+build:
+  stage: build
+  image: fedora:latest
+  before_script:
+    - dnf install -y rpm-build python3-devel
+  script:
+    - mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
+    - cp info-exporter.spec rpmbuild/SPECS/
+    - tar -czvf rpmbuild/SOURCES/info-exporter-0.1.0.tar.gz info-exporter
+    - rpmbuild --target noarch -bb rpmbuild/SPECS/info-exporter.spec
+  artifacts:
+    paths:
+      - rpmbuild/RPMS/noarch/*.rpm
