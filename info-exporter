@@ -286,6 +286,16 @@ class InfinibandCollector(object):
                     'help': 'Link current state.',
                 }
             }
+            self.link_speed = {
+                'Link_Speed' : {
+                    'help': 'Link available Speed.'
+                }
+            }
+            self.link_width = {
+                'Link_Width' : {
+                    'help': 'Link available Width.'
+                }
+            }
 
 
         if self.phy:
@@ -314,6 +324,7 @@ class InfinibandCollector(object):
             }
 
         self.link_info_regex = r'^(?P<LGuid>0x\w+)\s+\"\s*(?P<LName>[\w\-_ ]+)\"\s+\d+\s+(?P<LPort>\d+)\[\s+\]\s+\=+\(\s+.+(?P<State>Active|Down)\/\s*(?P<P_State>\w+)(?:.+(?P<RGuid>0x\w+)\s+\d+\s+(?P<RPort>\d+)\[\s+\]\s*\"\s*(?P<RName>[\w\-_ ]+).*|(?:()().*))$'
+        self.link_speed_width_regex = r'(?P<LGuid>0x\w+)\s+\"\s*(?P<LName>[\w\-_ ]+)\"\s+\d+\s+(?P<LPort>\d+)\[\s*\] ==\(\s*(?P<Width>\d+).\s*(?P<Speed>\d+.\d*).*(?P<RGuid>0x\w+)\s+\d+\s+(?P<RPort>\d+)\[\s*\]\s*\"(?P<RName>[\w\-_ ]+)'
 
         for value in self.merged_info_values :
             self.gauge[f'{value}'] = {
@@ -471,6 +482,34 @@ class InfinibandCollector(object):
                     ]
                 )
 
+            for link_name in self.link_speed:
+                self.metrics[link_name] = GaugeMetricFamily(
+                    'infiniband_' + link_name.lower(),
+                    self.link_speed[link_name]['help'],
+                    labels=[
+                        'NodeName',
+                        'NodeGuid',
+                        'PortNumber',
+                        'RemoteGuid',
+                        'RemotePort',
+                        'RemoteName'
+                    ]
+                )
+
+            for link_name in self.link_width:
+                self.metrics[link_name] = GaugeMetricFamily(
+                    'infiniband_' + link_name.lower(),
+                    self.link_width[link_name]['help'],
+                    labels=[
+                        'NodeName',
+                        'NodeGuid',
+                        'PortNumber',
+                        'RemoteGuid',
+                        'RemotePort',
+                        'RemoteName'
+                    ]
+                )
+
     def chunks(self, x, n):
         for i in range(0, len(x), n):
             yield x[i:i + n]
@@ -533,6 +572,55 @@ class InfinibandCollector(object):
             raise ParsingError('Item data incomplete:\n{}'.format(item[0]))
 
         self.parse_state(item)
+
+    def parse_speed_width(self, item):
+
+        try :
+            port = f"{int(item[2]):02}"
+        except ValueError:
+            logging.error(f"The port given is not an int : {item[2]}")
+            port = "Unknown"
+
+        try :
+            rport = f"{int(item[6]):02}"
+        except TypeError :
+            rport = "Unknown"
+        except ValueError:
+            logging.error(f"The port given is neither null or an int : {item[6]}")
+            rport = "Unknown"
+
+            
+        for link in self.link_speed:
+            label_values = [
+                item[1], #local_name
+                item[0], #local_guid
+                port,
+                item[5], #remote_guid 
+                rport, #remote_port
+                item[7]] #remote_name
+
+            self.metrics[link].add_metric(label_values, item[4])
+
+        for link in self.link_width:
+            label_values = [
+                item[1], #local_name
+                item[0], #local_guid
+                port, 
+                item[5], #remote_guid 
+                rport, #remote_port
+                item[7]] #remote_name
+
+            self.metrics[link].add_metric(label_values, item[3])
+
+    def process_speed_width(self, item):
+
+        if not isinstance(item, list):
+            raise RuntimeError('Wrong data type passed for item: {}'.format(type(item)))
+
+        if len(item) != 9:
+            raise ParsingError('Item data incomplete:\n{}'.format(item[0]))
+
+        self.parse_speed_width(item)
 
     def data_link(self):
         for cable_info in self.info_merged :
@@ -619,7 +707,6 @@ class InfinibandCollector(object):
                     self.value_values = int(float(temp_info[value.lower()]))
                 except ValueError:
                     logging.info(f'The value {value} is not an int.')
-                #print(value, label_values, self.value_values)
                 self.metrics['temp_info'].add_metric(label_values, self.value_values)
 
     def collect(self):
@@ -723,6 +810,39 @@ class InfinibandCollector(object):
             except ParsingError as e:
                 logging.error(e)
                 self.scrape_with_errors = True
+
+            contentv2 = re.split(self.link_speed_width_regex,
+                               iblinkinfo_stdout,
+                               flags=re.MULTILINE)
+            try:
+
+                if not contentv2:
+                    raise ParsingError('Input content is empty.')
+
+                if not isinstance(contentv2, list):
+                    raise RuntimeError('Input content should be a list.')
+                
+                # Drop first line that is empty on successful regex split():
+                if contentv2[0] == '':
+                    del contentv2[0]
+                else:
+                    raise ParsingError('Inconsistent input content detected:\n{}'.format(content[0]))
+                
+                input_data_chunks = self.chunks(contentv2, 9)
+
+                for data_chunk in input_data_chunks:
+                    self.process_speed_width(data_chunk)
+
+                for link_name in self.link_speed:
+                    yield self.metrics[link_name]
+
+                for link_name in self.link_width:
+                    yield self.metrics[link_name]
+
+            except ParsingError as e:
+                logging.error(e)
+                self.scrape_with_errors = True
+                
 
         scrape_duration.add_metric([], time.time() - scrape_start)
         yield scrape_duration
