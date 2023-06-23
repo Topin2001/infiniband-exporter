@@ -9,6 +9,7 @@ import tempfile
 import os
 import subprocess
 import time
+import sys
 
 from prometheus_client.core import GaugeMetricFamily
 from prometheus_client import make_wsgi_app
@@ -29,9 +30,12 @@ class InfinibandCollector(object):
                         cmd = f'ibdiagnet --pm_pause_time 0 -o {temp_dir} --get_phy_info --disable_output default --enable_output db_csv'
                     else :
                         cmd = f'ibdiagnet --pm_pause_time 0 -o {temp_dir} --disable_output default --enable_output db_csv'
-                    subprocess.run(shlex.split(cmd),
+                    run = subprocess.Popen(shlex.split(cmd),
                                            stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
+                                           stderr=subprocess.STDOUT)
+                    for line in run.stdout:
+                        if line[:3] == b'-E-':
+                            sys.stderr.buffer.write(line)
                 except FileNotFoundError as e:
                     self.scrape_with_errors = True
                     logging.error(f'An error occured with the generation of the csv : {e}')
