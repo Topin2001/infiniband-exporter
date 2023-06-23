@@ -36,6 +36,9 @@ class InfinibandCollector(object):
                     for line in run.stdout:
                         if line[:3] == b'-E-':
                             sys.stderr.buffer.write(line)
+                    return_code = run.wait()
+                    if return_code != 0:
+                        logging.error('ibdiagnet ran doesn\'t return 0')
                 except FileNotFoundError as e:
                     self.scrape_with_errors = True
                     logging.error(f'An error occured with the generation of the csv : {e}')
