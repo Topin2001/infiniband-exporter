@@ -532,8 +532,13 @@ class InfinibandCollector(object):
                          port,
                          reason)
             process = subprocess.Popen(['perfquery', '-R', '-G', name, port],
-                                       stdout=subprocess.PIPE)
-            stdtout = process.communicate()
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT)
+            for line in process.stdout:
+                logging.info(line)
+            return_code = process.wait()
+            if return_code != 0:
+                logging.error('perfquery ran doesn\'t return 0')
         else:
             logging.warning('Counters on %s port %s due to %s is overload',  # noqa: E501
                             name,
