@@ -4,3 +4,4 @@ net_dis.txt
 IT*.csv
 node_name_map*
 .vscode/
+*.log
