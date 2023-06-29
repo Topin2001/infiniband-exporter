@@ -5,3 +5,4 @@ IT*.csv
 node_name_map*
 .vscode/
 *.log
+test.py
