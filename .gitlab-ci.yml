@@ -23,5 +23,11 @@ build:
   artifacts:
     paths:
       - rpmbuild/RPMS/noarch/*.rpm
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  only:
+    - master
+  after_script:
+    - git config user.email "thomas.galpin@cern.ch"
+    - git config user.name "tgalpin"
+    - git add rpmbuild/RPMS/noarch/*.rpm
+    - git commit -m "Add generated file from CI job" || true  # Commit even if there are no changes
+    - git push origin HEAD:master
