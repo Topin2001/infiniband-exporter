@@ -49,5 +49,5 @@ release:
     assets:
       links:
         - name: 'Project RPM'
-          filepath: 'rpmbuild/RPMS/noarch/*.rpm'
+          url: 'https://gitlab.cern.ch/tgalpin/cables-info-exporter/-/jobs/artifacts/master/download?job=build'
 
