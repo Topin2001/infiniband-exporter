@@ -28,7 +28,7 @@ build:
       mv rpmbuild/RPMS/noarch/*.rpm .
   artifacts:
     paths:
-      - *.rpm
+      - ./*.rpm
   only:
     - master
     - tags
