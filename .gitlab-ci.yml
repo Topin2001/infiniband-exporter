@@ -7,7 +7,7 @@ build:
   before_script:
     - yum install -y rpm-build python3 python3-devel git
   script:
-   - sed -i "s/Version:.*/Version:        $CI_COMMIT_TAG/" your_spec_file.spec 
+   - sed -i "s/Version:.*/Version:        $CI_COMMIT_TAG/" info-exporter.spec 
     - mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
     - cp info-exporter.spec rpmbuild/SPECS/
     - mkdir info-exporter-build
@@ -27,4 +27,3 @@ build:
   only:
     - master
     - tags
-
