@@ -8,6 +8,9 @@ License:        CERN
 URL:            https://gitlab.cern.ch/tgalpin/cables-info-exporter
 Source0:        %{name}-%{version}.tar.gz
 
+
+Requires(pre): /usr/sbin/useradd, /usr/bin/getent
+Requires(postun): /usr/sbin/userdel, /usr/sbin/groupdel
 Requires:       bash
 Requires:       python3 
 Requires:       infiniband-diags >= 41.0
@@ -16,6 +19,20 @@ Requires:       ibutils2 >= 2.1.1
 %description
 A python scraper, which get information from opensm tools, format those and make those accessible by prometheus, on a local webpage.
 
+%pre
+/usr/bin/getent group infiniband-exporter || /usr/sbin/groupadd -r infiniband-exporter
+/usr/bin/getent passwd infiniband-exporter || /usr/sbin/useradd -r -g infiniband-exporter infiniband-exporter
+
+%postun
+case "$1" in
+   0)
+      /usr/sbin/userdel infiniband-exporter
+      /usr/sbin/groupdel infiniband-exporter
+   ;;
+   1) 
+   ;;
+ esac
+ 
 %prep
 rm -rf %{_builddir}/%{name}-%{version}
 
