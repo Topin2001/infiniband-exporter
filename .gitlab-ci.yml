@@ -26,8 +26,8 @@ build:
       tar --create --file rpmbuild/SOURCES/info-exporter-$CI_COMMIT_TAG.tar.gz -C info-exporter-build .
       rpmbuild --define "_topdir `pwd`/rpmbuild" --target noarch -bb /builds/tgalpin/cables-info-exporter/rpmbuild/SPECS/info-exporter.spec
   artifacts:
-    paths:
-      - rpmbuild/RPMS/noarch/*.rpm
+    report:
+      dotenv: rpmbuild/RPMS/noarch/*.rpm
   only:
     - master
     - tags
@@ -35,28 +35,19 @@ build:
 release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: prepare_job
+      artifacts: true
   rules:
     - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
   script:
-    - |
-      export RELEASE_TAG=$CI_COMMIT_TAG
-      export PROJECT_ID=$CI_PROJECT_ID
-      export TOKEN=$CI_JOB_TOKEN
-      export API_URL="https://gitlab.com/api/v4/projects/$PROJECT_ID/releases"
-      export ASSETS_PATH="rpmbuild/RPMS/noarch"
-
-      # Create the release
-      response=$(curl --header "PRIVATE-TOKEN: $TOKEN" --data "tag_name=$RELEASE_TAG" --data "description=Release $RELEASE_TAG" $API_URL)
-      release_id=$(echo "$response" | jq '.id')
-
-      # Upload assets to the release
-      for file in $(ls $ASSETS_PATH/*.rpm); do
-        echo "Uploading $file..."
-        wget --header "PRIVATE-TOKEN: $TOKEN" -X POST --form "file=@$file" "$API_URL/$release_id/assets/links"
-      done
-  dependencies:
-    - build
+    - echo "running release_job"
+    - ls
   release:                               # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
     tag_name: '$CI_COMMIT_TAG'
     description: 'Release $CI_COMMIT_TAG'
+    assets:
+    links:
+      -name: 'Project RPM'
+      filepath: 'rpmbuild/RPMS/noarch/*.rpm'
 
