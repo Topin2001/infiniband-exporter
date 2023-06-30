@@ -25,9 +25,10 @@ build:
       cp request.json info-exporter-build/
       tar --create --file rpmbuild/SOURCES/info-exporter-$CI_COMMIT_TAG.tar.gz -C info-exporter-build .
       rpmbuild --define "_topdir `pwd`/rpmbuild" --target noarch -bb /builds/tgalpin/cables-info-exporter/rpmbuild/SPECS/info-exporter.spec
+      mv rpmbuild/RPMS/noarch/*.rpm .
   artifacts:
     paths:
-      - rpmbuild/RPMS/noarch/*.rpm
+      - *.rpm
   only:
     - master
     - tags
