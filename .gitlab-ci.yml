@@ -26,8 +26,8 @@ build:
       tar --create --file rpmbuild/SOURCES/info-exporter-$CI_COMMIT_TAG.tar.gz -C info-exporter-build .
       rpmbuild --define "_topdir `pwd`/rpmbuild" --target noarch -bb /builds/tgalpin/cables-info-exporter/rpmbuild/SPECS/info-exporter.spec
   artifacts:
-    reports:
-      dotenv: rpmbuild/RPMS/noarch/*.rpm
+    paths:
+      - rpmbuild/RPMS/noarch/*.rpm
   only:
     - master
     - tags
