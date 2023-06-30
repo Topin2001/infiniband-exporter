@@ -1,6 +1,4 @@
-[![pipeline status](https://gitlab.cern.ch/tgalpin/cables-info-exporter/badges/master/pipeline.svg)](https://gitlab.cern.ch/tgalpin/cables-info-exporter/-/commits/master) 
-
-[![Latest Release](https://gitlab.cern.ch/tgalpin/cables-info-exporter/-/badges/release.svg)](https://gitlab.cern.ch/tgalpin/cables-info-exporter/-/releases)
+[![pipeline status](https://gitlab.cern.ch/tgalpin/cables-info-exporter/badges/master/pipeline.svg)](https://gitlab.cern.ch/tgalpin/cables-info-exporter/-/commits/master)  [![Latest Release](https://gitlab.cern.ch/tgalpin/cables-info-exporter/-/badges/release.svg)](https://gitlab.cern.ch/tgalpin/cables-info-exporter/-/releases)
 
 
 # Cables-info-exporter
