@@ -20,7 +20,7 @@ build:
       cp name_map_gen info-exporter-build/
       cp README.md info-exporter-build/
       cp request.json info-exporter-build/
-      tar --create --file rpmbuild/SOURCES/info-exporter-0.1.0.tar.gz -C info-exporter-build .
+      tar --create --file rpmbuild/SOURCES/info-exporter-$CI_COMMIT_TAG.tar.gz -C info-exporter-build .
       rpmbuild --define "_topdir `pwd`/rpmbuild" --target noarch -bb /builds/tgalpin/cables-info-exporter/rpmbuild/SPECS/info-exporter.spec
   artifacts:
     paths:
