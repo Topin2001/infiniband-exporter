@@ -35,8 +35,6 @@ build:
 release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
-  before_script: 
-    - dnf install -y curl
   rules:
     - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
   script:
@@ -54,7 +52,7 @@ release:
       # Upload assets to the release
       for file in $(ls $ASSETS_PATH/*.rpm); do
         echo "Uploading $file..."
-        curl --header "PRIVATE-TOKEN: $TOKEN" -X POST --form "file=@$file" "$API_URL/$release_id/assets/links"
+        wget --header "PRIVATE-TOKEN: $TOKEN" -X POST --form "file=@$file" "$API_URL/$release_id/assets/links"
       done
   dependencies:
     - build
