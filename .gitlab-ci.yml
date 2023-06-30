@@ -37,25 +37,6 @@ release:
     - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
   script:
     - echo "running release_job"
-    - |
-      export CI_COMMIT_TAG=$(git describe --tags --abbrev=0)
-      sed -i "s/Version:.*/Version:        $CI_COMMIT_TAG/" info-exporter.spec 
-      mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
-      cp info-exporter.spec rpmbuild/SPECS/
-      mkdir info-exporter-build
-      cp info-exporter info-exporter-build/
-      cp info-exporter-15s.service info-exporter-build/
-      cp info-exporter-60s.service info-exporter-build/
-      cp config-15s.json info-exporter-build/
-      cp config-60s.json info-exporter-build/
-      cp name_map_gen info-exporter-build/
-      cp README.md info-exporter-build/
-      cp request.json info-exporter-build/
-      tar --create --file rpmbuild/SOURCES/info-exporter-$CI_COMMIT_TAG.tar.gz -C info-exporter-build .
-      rpmbuild --define "_topdir `pwd`/rpmbuild" --target noarch -bb /builds/tgalpin/cables-info-exporter/rpmbuild/SPECS/info-exporter.spec
-  artifacts:
-    paths:
-      - rpmbuild/RPMS/noarch/*.rpm
   release:                               # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
     tag_name: '$CI_COMMIT_TAG'
     description: '$CI_COMMIT_TAG'
