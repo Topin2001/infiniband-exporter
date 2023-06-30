@@ -2,7 +2,7 @@ stages:
   - build
   - release
 
-  
+
 build:
   stage: build
   image: cern/alma9-base:latest
@@ -38,7 +38,22 @@ release:
   rules:
     - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
   script:
-    - echo "running release_job"
+    - |
+      export RELEASE_TAG=$CI_COMMIT_TAG
+      export PROJECT_ID=$CI_PROJECT_ID
+      export TOKEN=$CI_JOB_TOKEN
+      export API_URL="https://gitlab.com/api/v4/projects/$PROJECT_ID/releases"
+      export ASSETS_PATH="rpmbuild/RPMS/noarch"
+
+      # Create the release
+      response=$(curl --header "PRIVATE-TOKEN: $TOKEN" --data "tag_name=$RELEASE_TAG" --data "description=Release $RELEASE_TAG" $API_URL)
+      release_id=$(echo "$response" | jq '.id')
+
+      # Upload assets to the release
+      for file in $(ls $ASSETS_PATH/*.rpm); do
+        echo "Uploading $file..."
+        curl --header "PRIVATE-TOKEN: $TOKEN" -X POST --form "file=@$file" "$API_URL/$release_id/assets/links"
+      done
   dependencies:
     - build
   release:                               # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
