@@ -48,6 +48,6 @@ release:
     description: 'Release $CI_COMMIT_TAG'
     assets:
       links:
-        -name: 'Project RPM'
-        filepath: 'rpmbuild/RPMS/noarch/*.rpm'
+        - name: 'Project RPM'
+          filepath: 'rpmbuild/RPMS/noarch/*.rpm'
 
