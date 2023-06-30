@@ -36,7 +36,7 @@ release:
   stage: release
   image: cern/alma9-base:latest
   before_script: 
-    - yum install -y curl
+    - yum install -y curl jq
   rules:
     - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
   script:
