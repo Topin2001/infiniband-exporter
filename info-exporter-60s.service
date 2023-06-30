@@ -2,6 +2,8 @@
 Description=run the basic infiniband-exporter to be export each minute
 
 [Service]
+User=infiniband-exporter
+Group=infiniband-exporter
 ExecStart=/usr/bin/info-exporter --config /etc/info-exporter/config-60s.json
 Restart=always
 RestartSec=5s

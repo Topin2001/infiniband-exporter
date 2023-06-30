@@ -2,6 +2,8 @@
 Description=run the quickest infiniband-exporter to be export each 15 sec
 
 [Service]
+User=infiniband-exporter
+Group=infiniband-exporter
 ExecStart=/usr/bin/info-exporter --config /etc/info-exporter/config-15s.json
 Restart=always
 RestartSec=5s
