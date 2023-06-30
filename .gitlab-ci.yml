@@ -28,7 +28,7 @@ build:
   after_script:
     - git config --global user.email "$GITLAB_EMAIL"
     - git config --global user.name "$GITLAB_USERNAME"
-    - git clone https://gitlab.cern.ch/tgalpin/cables-info-exporter.git
+    - git clone $CI_REPOSITORY_URL
     - cp rpmbuild/RPMS/noarch/*.rpm cables-info-exporter/
     - cd cables-info-exporter
     - git add *.rpm
