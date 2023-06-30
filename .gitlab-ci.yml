@@ -25,12 +25,3 @@ build:
       - rpmbuild/RPMS/noarch/*.rpm
   only:
     - master
-  after_script:
-    - git config --global user.email "$GITLAB_EMAIL"
-    - git config --global user.name "$GITLAB_USERNAME"
-    - git clone $CI_REPOSITORY_URL
-    - cp rpmbuild/RPMS/noarch/*.rpm cables-info-exporter/
-    - cd cables-info-exporter
-    - git add *.rpm
-    - git commit -m "Add generated RPM from CI job" || true  # Commit even if there are no changes
-    - git push origin master
