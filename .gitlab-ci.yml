@@ -1,5 +1,6 @@
 stages:
   - build
+
 build:
   stage: build
   image: cern/alma9-base:latest
@@ -27,4 +28,4 @@ build:
       - rpmbuild/RPMS/noarch/*.rpm
   only:
     - master
-    - tags
+    - /^v\d+\.\d+(\.\d+)?(-\S*)?$/
