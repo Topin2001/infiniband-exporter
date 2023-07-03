@@ -210,7 +210,8 @@ def match_severs_name(output_file):
 		
 
 def main():
-	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+				  description='A node name map generator, for infiniband tools')
 	parser.add_argument(
 		'--net_dis_file',
 		'-n',
