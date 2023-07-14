@@ -874,43 +874,60 @@ class NoLoggingWSGIRequestHandler(WSGIRequestHandler):
         pass
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Prometheus collector for a infiniband fabric')
-    parser.add_argument("--verbose", help="increase output verbosity",
-                        action="store_true")
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                     description='Prometheus collector for a infiniband fabric')
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        required=False,
+        help="increase output verbosity",
+        action="store_true")
     parser.add_argument(
         '--csv-file-input',
+        '-i',
+        required=False,
         action='store',
         dest='csv_file_input',
         default='/var/tmp/ibdiagnet2/ibdiagnet2.db_csv',
         help='csv file used to gather data of different cable.')
     parser.add_argument(
         '--port',
+        '-p',
+        required=False,
         type=int,
-        default=0,
+        default=9685,
         help='Collector http port, default is 9685')
     parser.add_argument(
         '--node-name-map',
+        '-m',
+        required=False,
         action='store',
         dest='node_name_map',
-        help='Node name map used by ibqueryerrors.')
+        help='Node name map used to link the guid to the local name.')
     parser.add_argument(
         '--can-reset-counter',
+        '-r',
+        required=False,
         dest='can_reset_counter',
         help='Will reset counter as required when maxed out.',
         action='store_true')
     parser.add_argument(
         '--phy',
+        required=False,
         dest='phy',
-        help='Will provided phy info such as fan, temperature sensors and power info.',
+        help='Will provided physic info such as fan, temperature sensors and power info.',
         action='store_true')
     parser.add_argument(
         '--link_state',
+        '-l',
+        required=False,
         dest='link_state',
         help='Will provided link state info.',
         action='store_true')
     parser.add_argument(
         '--asic_temp',
+        '-a',
+        required=False,
         dest='asic_temp',
         help='Will provided asic temperature info.',
         action='store_true')
@@ -929,7 +946,7 @@ def main():
 
         if "verbose" in config_data and not args.verbose:
             args.verbose = config_data["verbose"]
-        if "port" in config_data and args.port == 0:
+        if "port" in config_data and args.port == 9685:
             args.port = config_data["port"]
         if "node_name_map" in config_data and not args.node_name_map:
             args.node_name_map = config_data["node_name_map"]
@@ -942,8 +959,6 @@ def main():
         if "asic_temp" in config_data and not args.asic_temp:
             args.asic_temp = config_data["asic_temp"]      
 
-    if args.port ==0:
-        args.port = 9685
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG,
