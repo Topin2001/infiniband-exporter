@@ -43,9 +43,12 @@ release:
     - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
   script:
     - echo "running release_job"
-    - echo "Publishing RPM to Package Registry"
-    - release-cli package list -p $CI_PROJECT_ID | grep $CI_COMMIT_TAG || release-cli package create -p $CI_PROJECT_ID -t $CI_COMMIT_TAG
-    - release-cli package link -p $CI_PROJECT_ID -t $CI_COMMIT_TAG -f ./*.rpm
+    - echo "Publishing RPM to GitLab Package Registry"
+    - |
+      export CI_COMMIT_TAG=$(git describe --tags --abbrev=0)
+      for rpm_file in ./*.rpm; do
+        curl --request POST --header "JOB-TOKEN: $CI_JOB_TOKEN" --form "file=@$rpm_file" "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/rpms/$CI_COMMIT_TAG/"
+      done
     - ls
   release:                               # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
     tag_name: '$CI_COMMIT_TAG'
